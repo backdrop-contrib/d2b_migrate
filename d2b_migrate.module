@@ -1,0 +1,393 @@
+<?php
+
+
+/**
+* Implements hook_menu().
+*/
+function d2b_migrate_menu() {
+  $items['d2b-migrate-source'] = array(
+  'title' => 'Source database',
+  'page callback' => 'backdrop_get_form',
+  'page arguments' => array('d2b_migrate_source_database_form'),
+  'access callback' => TRUE,
+  'type' => MENU_CALLBACK,
+  );
+  $items['d2b-migrate-analysis'] = array(
+  'title' => 'Source database',
+  'page callback' => 'backdrop_get_form',
+  'page arguments' => array('d2b_migrate_analysis_form'),
+  'access callback' => TRUE,
+  'type' => MENU_CALLBACK,
+  );
+  $items['d2b-migrate-backup'] = array(
+  'title' => 'Source backup',
+  'page callback' => 'backdrop_get_form',
+  'page arguments' => array('d2b_migrate_backup_form'),
+  'access callback' => TRUE,
+  'type' => MENU_CALLBACK,
+  );
+  $items['d2b-migrate-files'] = array(
+  'title' => 'Source backup',
+  'page callback' => 'backdrop_get_form',
+  'page arguments' => array('d2b_migrate_files_form'),
+  'access callback' => TRUE,
+  'type' => MENU_CALLBACK,
+  );
+  $items['d2b-migrate-restore'] = array(
+  'title' => 'Source backup',
+  'page callback' => 'backdrop_get_form',
+  'page arguments' => array('d2b_migrate_restore_form'),
+  'access callback' => TRUE,
+  'type' => MENU_CALLBACK,
+  );
+  dpm('$items');
+
+  return $items;
+}
+
+function d2b_migrate_source_database_form($form, $form_state) {
+  backup_migrate_include('crud');
+
+  $form = backup_migrate_crud_ui_create('source', 'mysql');
+  $form['#validate'] = array('tester_crud_edit_form_validate');
+  $form['#submit'] = array('tester_crud_edit_form_submit');
+  return $form;
+}
+
+
+/**
+ * Submit the item edit form.
+ */
+function tester_crud_edit_form_validate($form, &$form_state) {
+  // We're using raw input so will need to validate these.
+}
+
+/**
+ * Submit the item edit form.
+ */
+function tester_crud_edit_form_submit($form, &$form_state) {
+  $item = $form_state['values']['item'];
+  $form_state['values'] = array_merge($form_state['values'], $form_state['input']);
+
+  $item->edit_form_submit($form, $form_state);
+  dpm($item);
+  dpm($form_state);
+
+  if (empty($form_state['redirect'])) {
+    //$form_state['redirect'] = 'admin/content';
+  }
+}
+
+function d2b_migrate_analysis_form($form, $form_state) {
+  backup_migrate_include('sources');
+
+  $sources = backup_migrate_get_sources();
+  $source = $sources['untitled_sources']->dest_url;
+
+  $d7_database = array(
+    'database' => $source['path'],
+    'username' => $source['user'],
+    'password' => $source['pass'],
+    'host' => $source['host'],
+    'driver' => $source['scheme']
+  );
+
+  Database::addConnectionInfo('migrateKey', 'default', $d7_database);
+  db_set_active('migrateKey');
+
+  $result = db_query('SELECT * FROM {system}');
+
+  db_set_active();
+
+  $system_list = array();
+
+  foreach ($result as $record) {
+    $record->info = unserialize($record->info);
+    if ($record->info['hidden']) {
+      continue;
+    }
+    if (strpos($record->filename, 'modules/') === 0) {
+      continue;
+    }
+    if (strpos($record->filename, 'themes/') === 0) {
+      continue;
+    }
+    $system_list[$record->name] = (array) $record;
+  }
+
+  $form['signature'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Textarea'),
+    '#default_value' => '',
+    '#description' => t('Nothing.')
+  );
+  return $form;
+}
+
+function d2b_migrate_backup_form($form, $form_state) {
+  backup_migrate_include('profiles');
+
+  $settings = _backup_migrate_profile_saved_default_profile();
+dpm($settings);
+  $form['signature'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Textarea'),
+    '#default_value' => '',
+    '#description' => t('Nothing.')
+  );
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Backup'),
+  );
+  return $form;
+}
+
+function d2b_migrate_backup_form_submit($form, &$form_state) {
+  backup_migrate_include('sources');
+  backup_migrate_include('destinations');
+  backup_migrate_include('profiles');
+
+  $sources = backup_migrate_get_sources();
+  $destinations = backup_migrate_get_destinations();
+
+  $settings = _backup_migrate_profile_saved_default_profile();
+
+  $settings->destination_id = array('manual', 'download');
+
+  // @todo: make this dynamic of course.
+  $settings->source_id = 'untitled_sources';
+
+/*   // Add the second destination.
+  if (!empty($form_state['values']['copy_destination_id'])) {
+    $settings->destination_id[] = $form_state['values']['copy_destination_id'];
+  }
+ */
+  dpm($destinations);
+  backup_migrate_ui_manual_backup_perform($settings);
+
+  backdrop_set_message(t('Your database has been backed up.'));
+}
+
+function d2b_migrate_files_form($form, $form_state) {
+  $form['signature'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Textarea'),
+    '#default_value' => '',
+    '#description' => t('Nothing.')
+  );
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Backup'),
+  );
+  return $form;
+}
+
+
+function d2b_migrate_files_form_submit($form, $form_state) {
+  $source_base_path = 'http://d7.localhost/sites/default/files/';
+
+  backup_migrate_include('sources');
+
+  $sources = backup_migrate_get_sources();
+  $source = $sources['untitled_sources']->dest_url;
+
+  $d7_database = array(
+    'database' => $source['path'],
+    'username' => $source['user'],
+    'password' => $source['pass'],
+    'host' => $source['host'],
+    'driver' => $source['scheme']
+  );
+
+  Database::addConnectionInfo('migrateKey', 'default', $d7_database);
+  db_set_active('migrateKey');
+
+  $result = db_query('SELECT uri FROM {file_managed}')->fetchCol();
+
+  db_set_active();
+
+  foreach ($result as $record) {
+    $path_info = pathinfo($record);
+    if (strpos($record, 'public://') === 0) {
+      $dir_path = substr($path_info['dirname'], 9);
+      $stream = backdrop_realpath('public://');
+    }
+    elseif (strpos($record, 'private://') === 0) {
+      $dir_path = substr($path_info['dirname'], 11);
+      $stream = backdrop_realpath('private://');
+    }
+    $source_file = $source_base_path . $dir_path . '/' . $path_info['basename'];
+    $new_dir = $stream . '/nnn/' . $dir_path;
+    file_prepare_directory($new_dir, FILE_CREATE_DIRECTORY);
+    $new_file = $new_dir . '/' . $path_info['basename'];
+
+    if (copy($source_file, $new_file) ) {
+        dpm( "Copy success!");
+    }else{
+        dpm( "Copy no success!");
+    }
+  }
+}
+
+/**
+ * The restore/import upload form.
+ */
+function d2b_migrate_restore_form() {
+  backup_migrate_include('filters', 'destinations', 'sources');
+
+
+  $form = array();
+
+  list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
+
+  $keys = array_keys($files);
+  array_unshift($keys, t('Choose a saved backup'));
+  $default = reset($keys);
+  $form['backup_saved'] = array(
+    '#type' => 'select',
+    '#options' => $keys,
+    '#default_value' => $default,
+    '#files' => $files,
+  );
+
+
+  $form['backup_upload'] = array(
+    '#title' => t('Or upload a backup file'),
+    '#type' => 'file',
+    '#description' => t("Upload a backup file created by Backup and Migrate. For other database or file backups please use another tool for import. Max file size: %size", array("%size" => format_size(file_upload_max_size()))),
+  );
+
+  $form['saved'] = array(
+    "#type" => "value",
+    "#value" => $keys,
+  );
+  $form['source_id'] = array(
+    "#type" => "value",
+    "#value" => 'db',
+  );
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Upgrade database'),
+  );
+
+  return $form;
+}
+
+/**
+ * The restore/import upload form.
+ */
+function d2b_migrate_restore_form_submit($form, &$form_state) {
+  backup_migrate_include('destinations');
+  $validators = array('file_validate_extensions' => array('gz zip sql mysql bz bz2'));
+
+  $values = $form_state['values'];
+  $values['source_id'] = 'db';
+  if (!$values['backup_saved'] && $file = file_save_upload('backup_upload', $validators)) {
+  // if (!$values['backup_saved']) {
+    $values['from'] = 'upload';
+    d2b_migrate_perform_restore('upload', $file->uri, $values);
+  }
+  else {
+    $values['from'] = 'saved';
+    $values['file'] = $values['saved'][$values['backup_saved']];
+  dpm($values);
+    list($destination, $file_id) = explode('/', $values['file'], 2);
+    d2b_migrate_perform_restore($destination, $file_id, $form_state['values']);
+  }
+
+  $form_state['redirect'] = 'core/update.php';
+}
+
+
+/**
+ * Restore from a file in the given destination.
+ */
+function d2b_migrate_perform_restore($destination_id, $file, $settings = array()) {
+  backup_migrate_include('files', 'filters');
+  timer_start('backup_migrate_restore');
+
+  // If not in 'safe mode', increase the maximum execution time:
+  if (!ini_get('safe_mode') && ini_get('max_execution_time') < config_get('backup_migrate.settings','backup_migrate_backup_max_time')) {
+    set_time_limit(config_get('backup_migrate.settings','backup_migrate_restore_max_time'));
+  }
+
+  // Make the settings into a default profile.
+  if (!is_object($settings)) {
+    $settings = backup_migrate_crud_create_item('profile', $settings);
+    $settings->source_id = empty($settings->source_id) ? 'db' : $settings->source_id;
+  }
+
+  // Register shutdown callback.
+  register_shutdown_function('d2b_migrate_shutdown', $settings);
+
+  if (!is_object($file)) {
+    // Load the file from the destination.
+    $file = backup_migrate_destination_get_file($destination_id, $file);
+    if (!$file) {
+      _backup_migrate_message("Could not restore because the file could not be loaded from the destination.", array(), 'error');
+      backup_migrate_cleanup();
+      return FALSE;
+    }
+  }
+
+  // Filter the file and perform the restore.
+  $file = backup_migrate_filters_restore($file, $settings);
+  if (!$file) {
+    if (_backup_migrate_check_timeout()) {
+      backup_migrate_restore_fail('Could not perform the restore because the script timed out. Try increasing your PHP <a href="!url">max_execution_time setting</a>.', array('!url' => 'http://www.php.net/manual/en/info.configuration.php#ini.max-execution-time'), 'error');
+    }
+    else {
+      backup_migrate_restore_fail("Could not perform the restore.", array(), 'error');
+    }
+    backup_migrate_cleanup();
+    return FALSE;
+  }
+
+  $time = timer_stop('backup_migrate_restore');
+
+  // Delete any temp files we've created.
+  backup_migrate_cleanup();
+
+  // No errors. Return the file.
+  return $file;
+}
+
+/**
+ * Shutdown callback when the script terminates even if the script timed out.
+ */
+function d2b_migrate_shutdown($settings) {
+  // If we ran out of time, set an error so the user knows what happened
+  if (_backup_migrate_check_timeout()) {
+    backup_migrate_cleanup();
+    backup_migrate_backup_fail('The operation timed out. Try increasing your PHP <a href="!url">max_execution_time setting</a>.', array('!url' => 'http://www.php.net/manual/en/info.configuration.php#ini.max-execution-time'), $settings);
+    // The session will have already been written and closed, so we need to write any changes directly.
+    _backdrop_session_write(session_id(), session_encode());
+    // Add a redirect or we'll just get whitescreened.
+  }
+  d2b_migrate_goto();
+}
+
+
+/**
+ * Shutdown callback when the script terminates even if the script timed out.
+ */
+function d2b_migrate_goto() {
+  $url = 'http://backdrop.localhost/core/update.php';
+
+  header('Location: ' . $url, TRUE, 302);
+  backdrop_exit($url);
+  $url = 'http://backdrop.localhost/core/update.php';
+
+  header('Location: ' . $url, TRUE, 302);
+  backdrop_exit($url);
+}
