@@ -386,8 +386,4 @@ function d2b_migrate_goto() {
 
   header('Location: ' . $url, TRUE, 302);
   backdrop_exit($url);
-  $url = 'http://backdrop.localhost/core/update.php';
-
-  header('Location: ' . $url, TRUE, 302);
-  backdrop_exit($url);
 }
