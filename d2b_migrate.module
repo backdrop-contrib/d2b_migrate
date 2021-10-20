@@ -169,7 +169,7 @@ function d2b_migrate_analysis_form($form, $form_state) {
     }
     $system_list[$record->name] = (array) $record;
   }
-  dpm($system_list);
+  // dpm($system_list);
 
   $form['signature'] = array(
     '#type' => 'textarea',
@@ -177,7 +177,23 @@ function d2b_migrate_analysis_form($form, $form_state) {
     '#default_value' => '',
     '#description' => t('Nothing.')
   );
+  $form['actions'] = array(
+    '#type' => 'actions',
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Next: migrate files'),
+  );
+
   return $form;
+}
+
+/**
+ * Submit the item edit form.
+ */
+function d2b_migrate_analysis_form_submit($form, &$form_state) {
+  // backdrop_set_message(t('Source database has been saved.'));
+  $form_state['redirect'] = 'd2b-migrate-backup';
 }
 
 function d2b_migrate_backup_form($form, $form_state) {
