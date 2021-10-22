@@ -138,12 +138,42 @@ function d2b_migrate_analysis_form($form, $form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
     dpm($projects);
 
-  $form['signature'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Textarea'),
-    '#default_value' => '',
-    '#description' => t('Nothing.')
+  $header = array(
+    'project_name' => array('data' => t('Project name')),
+    'type' => array('data' => t('Type')),
+    'location' => t('Location'),
   );
+  $rows = array();
+
+  foreach ($projects->data as $project_name => $project) {
+    $row = array();
+    if (isset($project['in_core_since'])) {
+      $location = t('In core');
+    }
+    elseif ($project['location'] == 'backdrop') {
+      $location = t('Downloadable via UI');
+    }
+    elseif ($project['location'] == 'github') {
+      $location = t('Download from GitHub');
+    }
+    elseif ($project['location'] == 'not_found') {
+      $location = t('Not yet ported');
+    }
+    
+    $row['project_name'] = $project['info']['name'];
+    $row['type'] = t('Module');
+    $row['location'] = $location;
+    $rows[$project_name] = $row;
+  }
+
+  $form['projects'] = array(
+    '#type' => 'tableselect',
+    '#header' => $header,
+    '#options' => $rows,
+    '#empty' => t('No source module data was found.'),
+    '#attributes' => array('class' => array('source-modules-list')),
+  );
+
   $form['fetch'] = array(
     '#type' => 'submit',
     '#submit' => array('d2b_migrate_analysis_fetch_projects'),
