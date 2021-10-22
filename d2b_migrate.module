@@ -325,12 +325,15 @@ function d2b_migrate_backup_form($form, $form_state) {
   backup_migrate_include('profiles');
 
   $settings = _backup_migrate_profile_saved_default_profile();
-dpm($settings);
-  $form['signature'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Textarea'),
-    '#default_value' => '',
-    '#description' => t('Nothing.')
+
+  $form['help'] = array(
+    '#type' => 'help',
+    '#markup' => t('Download a copy of the source database.'),
+  );
+  $form['backup'] = array(
+    '#type' => 'submit',
+    '#submit' => array('d2b_migrate_backup_form_backup'),
+    '#value' => t('Download database'),
   );
   $form['actions'] = array(
     '#type' => 'actions',
@@ -342,7 +345,7 @@ dpm($settings);
   return $form;
 }
 
-function d2b_migrate_backup_form_submit($form, &$form_state) {
+function d2b_migrate_backup_form_backup($form, &$form_state) {
   backup_migrate_include('sources');
   backup_migrate_include('destinations');
   backup_migrate_include('profiles');
@@ -366,28 +369,35 @@ function d2b_migrate_backup_form_submit($form, &$form_state) {
   backup_migrate_ui_manual_backup_perform($settings);
 
   backdrop_set_message(t('Your database has been backed up.'));
+}
+
+function d2b_migrate_backup_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate-files';
 }
 
 function d2b_migrate_files_form($form, $form_state) {
-  $form['signature'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Textarea'),
-    '#default_value' => '',
-    '#description' => t('Nothing.')
+  $form['help'] = array(
+    '#type' => 'help',
+    '#markup' => t('Copy the files directory on the source site.'),
+  );
+  $form['backup'] = array(
+    '#type' => 'submit',
+    '#submit' => array('d2b_migrate_files_form_backup'),
+    '#value' => t('Copy files'),
   );
   $form['actions'] = array(
     '#type' => 'actions',
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Migrate database'),
+    '#value' => t('Next: migrate database'),
+    '#submit' => array('d2b_migrate_files_form_submit'),
   );
   return $form;
 }
 
 
-function d2b_migrate_files_form_submit($form, $form_state) {
+function d2b_migrate_files_form_backup($form, $form_state) {
   $source_base_path = config_get('d2b_migrate.settings', 'source_url');
   $source_database = config_get('d2b_migrate.settings', 'source_db_machine_name');
 
@@ -432,6 +442,10 @@ function d2b_migrate_files_form_submit($form, $form_state) {
         dpm( "Copy no success!");
     }
   }
+}
+
+function d2b_migrate_files_form_submit($form, &$form_state) {
+  $form_state['redirect'] = 'd2b-migrate-restore';
 }
 
 /**
