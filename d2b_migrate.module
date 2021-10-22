@@ -136,7 +136,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
 
 function d2b_migrate_analysis_form($form, $form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
-  dpm($projects);
+    dpm($projects);
 
   $form['signature'] = array(
     '#type' => 'textarea',
@@ -212,41 +212,64 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   module_load_include('inc', 'update', 'update.compare');
   $projects = array();
   _update_process_info_list($projects, $system_list, 'module', FALSE);
-  dpm($projects);
 
-  foreach ($projects as $project) {
-    $operations[] = array('d2b_migrate_analysis_fetch_project', array($project));
+  $cached_projects = _update_cache_get('d2b_migrate_get_cached_projects');
+  $cached_project_data = array();
+  if (!empty($cached_projects->data)) {
+    $cached_project_data = $cached_projects->data;
   }
 
-  $batch = array(
-    'operations' => $operations,
-    'finished' => 'd2b_migrate_analysis_fetch_project_finished',
-    'title' => t('Processing project'),
-    'init_message' => t('Fetching data about projects.'),
-    'progress_message' => t('Processed @current out of @total.'),
-    'error_message' => t('Batch project fetch encountered an error.'),
-  );
-  batch_set($batch);
-
-  batch_process('d2b-migrate-analysis');
+  module_load_include('inc', 'd2b_migrate', 'd2b_migrate.core');
+  foreach ($projects as $project) {
+    if (!isset($cached_project_data[$project['name']])) {
+      $core = d2b_migrate_core($projects, $project['name']);
+    }
+  }
+  $operations = array();
+  foreach ($projects as $project) {
+    if (!isset($cached_project_data[$project['name']])) {
+      $operations[] = array('d2b_migrate_analysis_fetch_project', array($project));
+    }
+  }
+  if (!empty($operations)) {
+    $batch = array(
+      'operations' => $operations,
+      'finished' => 'd2b_migrate_analysis_fetch_project_finished',
+      'title' => t('Processing project'),
+      'init_message' => t('Fetching data about projects.'),
+      'progress_message' => t('Processed @current out of @total.'),
+      'error_message' => t('Batch project fetch encountered an error.'),
+    );
+    batch_set($batch);
+    batch_process('d2b-migrate-analysis');
+  }
+  else {
+    drupal_set_message(t('All projects updated'));
+    $form_state['redirect'] = 'd2b-migrate-analysis';
+  }
 }
 
 function d2b_migrate_analysis_fetch_project($project, &$context) {
   $project_name = $project['name'];
-  $url = D2B_MIGRATE_UPDATE_DEFAULT_URL . '/' . $project_name . '/1.x';
-  $xml = backdrop_http_request($url);
-  module_load_include('inc', 'update', 'update.fetch');
-  if (!isset($xml->error) && isset($xml->data) && $data = update_parse_xml($xml->data)) {
-    $project['location'] = 'backdrop';
+  if (!empty($project['in_core_since'])) {
+    $project['location'] = 'in_core';
   }
   else {
-    $github = 'https://github.com/backdrop-contrib/' . $project_name;
-    $response = backdrop_http_request($github);
-    if ($response->code != '404') {
-      $project['location'] = 'github';
+    $url = D2B_MIGRATE_UPDATE_DEFAULT_URL . '/' . $project_name . '/1.x';
+    $xml = backdrop_http_request($url);
+    module_load_include('inc', 'update', 'update.fetch');
+    if (!isset($xml->error) && isset($xml->data) && $data = update_parse_xml($xml->data)) {
+      $project['location'] = 'backdrop';
     }
     else {
-      $project['location'] = 'not_found';
+      $github = 'https://github.com/backdrop-contrib/' . $project_name;
+      $response = backdrop_http_request($github);
+      if ($response->code != '404') {
+        $project['location'] = 'github';
+      }
+      else {
+        $project['location'] = 'not_found';
+      }
     }
   }
 
