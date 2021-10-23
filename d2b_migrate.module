@@ -80,7 +80,7 @@ function d2b_migrate_start_form_submit($form, &$form_state) {
 }
 
 
-function d2b_migrate_source_database_form($form, $form_state) {
+function d2b_migrate_source_database_form($form, &$form_state) {
   backup_migrate_include('crud');
 
   $form = backup_migrate_crud_ui_create('source', 'mysql');
@@ -134,7 +134,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate-analysis';
 }
 
-function d2b_migrate_analysis_form($form, $form_state) {
+function d2b_migrate_analysis_form($form, &$form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
     dpm($projects);
 
@@ -321,7 +321,7 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
   }
 }
 
-function d2b_migrate_backup_form($form, $form_state) {
+function d2b_migrate_backup_form($form, &$form_state) {
   backup_migrate_include('profiles');
 
   $settings = _backup_migrate_profile_saved_default_profile();
@@ -375,7 +375,7 @@ function d2b_migrate_backup_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate-files';
 }
 
-function d2b_migrate_files_form($form, $form_state) {
+function d2b_migrate_files_form($form, &$form_state) {
   $form['help'] = array(
     '#type' => 'help',
     '#markup' => t('Copy the files directory on the source site.'),
@@ -397,7 +397,7 @@ function d2b_migrate_files_form($form, $form_state) {
 }
 
 
-function d2b_migrate_files_form_backup($form, $form_state) {
+function d2b_migrate_files_form_backup($form, &$form_state) {
   $source_base_path = config_get('d2b_migrate.settings', 'source_url');
   $source_database = config_get('d2b_migrate.settings', 'source_db_machine_name');
 
