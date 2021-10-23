@@ -324,6 +324,11 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
 function d2b_migrate_backup_form($form, &$form_state) {
   backup_migrate_include('profiles');
 
+  // @todo; setup at start.
+  if (!config_get('system.core','file_private_path')) {
+    backdrop_set_message('You must specify a private file system path in the !settings to continue.', array('!settings' => l(t('file system settings'), 'admin/config/media/file-system')), 'warning');
+  }
+
   $settings = _backup_migrate_profile_saved_default_profile();
 
   $form['help'] = array(
@@ -341,6 +346,7 @@ function d2b_migrate_backup_form($form, &$form_state) {
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Next: backup files'),
+    '#submit' => array('d2b_migrate_backup_form_submit'),
   );
   return $form;
 }
@@ -456,6 +462,7 @@ function d2b_migrate_restore_form() {
 
 
   $form = array();
+  dpm( backup_migrate_get_saved_backups());
 
   list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
 
@@ -595,7 +602,7 @@ function d2b_migrate_shutdown($settings) {
  * Shutdown callback when the script terminates even if the script timed out.
  */
 function d2b_migrate_goto() {
-  $url = 'http://backdrop.localhost/core/update.php';
+  $url = base_path() . 'core/update.php';
 
   header('Location: ' . $url, TRUE, 302);
   backdrop_exit($url);
