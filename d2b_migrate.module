@@ -53,9 +53,14 @@ function d2b_migrate_menu() {
 }
 
 function d2b_migrate_start_form($form, &$form_state) {
+  // @todo; setup at start.
+  $private_files = config_get('system.core','file_private_path');
+  if (empty($private_files)) {
+    backdrop_set_message(t('You must specify a private file system path in the !settings to continue.', array('!settings' => l(t('file system settings'), 'admin/config/media/file-system'))), 'warning');
+  }
   $form['help'] = array(
     '#type' => 'help',
-    '#markup' => t('Ready'),
+    '#markup' => t('This form will require access to the source database. This will be required in the next step.'),
   );
   $form['actions'] = array(
     '#type' => 'actions',
@@ -63,6 +68,7 @@ function d2b_migrate_start_form($form, &$form_state) {
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Next: source database'),
+    '#disabled' => empty($private_files),
   );
   return $form;
 }
@@ -132,6 +138,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
 function d2b_migrate_analysis_form($form, &$form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
     dpm($projects);
+  $project_data = !empty($projects->data) ? $projects->data : array();
 
   $header = array(
     'project_name' => array('data' => t('Project name')),
@@ -140,7 +147,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
   );
   $rows = array();
 
-  foreach ($projects->data as $project_name => $project) {
+  foreach ($project_data as $project_name => $project) {
     $row = array();
     if (isset($project['in_core_since'])) {
       $location = t('In core');
@@ -318,11 +325,6 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
 
 function d2b_migrate_backup_form($form, &$form_state) {
   backup_migrate_include('profiles');
-
-  // @todo; setup at start.
-  if (!config_get('system.core','file_private_path')) {
-    backdrop_set_message('You must specify a private file system path in the !settings to continue.', array('!settings' => l(t('file system settings'), 'admin/config/media/file-system')), 'warning');
-  }
 
   $settings = _backup_migrate_profile_saved_default_profile();
 
