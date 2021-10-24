@@ -137,7 +137,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
 
 function d2b_migrate_analysis_form($form, &$form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
-    dpm($projects);
+
   $project_data = !empty($projects->data) ? $projects->data : array();
 
   $header = array(
@@ -374,7 +374,6 @@ function d2b_migrate_backup_form_backup($form, &$form_state) {
     $settings->destination_id[] = $form_state['values']['copy_destination_id'];
   }
  */
-  dpm($destinations);
   backup_migrate_ui_manual_backup_perform($settings);
 
   backdrop_set_message(t('Your database has been backed up.'));
@@ -453,9 +452,9 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
     $new_file = $new_dir . '/' . $path_info['basename'];
 
     if (copy($source_file, $new_file) ) {
-        dpm( "Copy success!");
+        // dpm( "Copy success!");
     }else{
-        dpm( "Copy no success!");
+        // dpm( "Copy no success!");
     }
   }
 }
@@ -472,7 +471,6 @@ function d2b_migrate_restore_form() {
 
 
   $form = array();
-  dpm( backup_migrate_get_saved_backups());
 
   list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
 
@@ -530,7 +528,7 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
   else {
     $values['from'] = 'saved';
     $values['file'] = $values['saved'][$values['backup_saved']];
-  dpm($values);
+
     list($destination, $file_id) = explode('/', $values['file'], 2);
     d2b_migrate_perform_restore($destination, $file_id, $form_state['values']);
   }
