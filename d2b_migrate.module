@@ -6,42 +6,47 @@ define('D2B_MIGRATE_UPDATE_DEFAULT_URL', 'https://updates.backdropcms.org/releas
 * Implements hook_menu().
 */
 function d2b_migrate_menu() {
-  $items['d2b-migrate-start'] = array(
+  $items['admin/config/development/d2b-migrate/start'] = array(
+    'title' => 'Drupal to Backdrop upgrade',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/config/development/d2b-migrate'] = array(
   'title' => 'Start',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_start_form'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['d2b-migrate-source'] = array(
+  $items['admin/config/development/d2b-migrate/source'] = array(
   'title' => 'Source database setup',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_source_database_form'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['d2b-migrate-analysis'] = array(
+  $items['admin/config/development/d2b-migrate/analysis'] = array(
   'title' => 'Source database analysis',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_analysis_form'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['d2b-migrate-backup'] = array(
+  $items['admin/config/development/d2b-migrate/backup'] = array(
   'title' => 'Set up database backup',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_backup_form'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['d2b-migrate-files'] = array(
+  $items['admin/config/development/d2b-migrate/files'] = array(
   'title' => 'Files backup',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_files_form'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['d2b-migrate-restore'] = array(
+  $items['admin/config/development/d2b-migrate/restore'] = array(
   'title' => 'Migrate database',
   'page callback' => 'backdrop_get_form',
   'page arguments' => array('d2b_migrate_restore_form'),
@@ -77,7 +82,7 @@ function d2b_migrate_start_form($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_start_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'd2b-migrate-source';
+  $form_state['redirect'] = 'admin/config/development/d2b-migrate/source';
 }
 
 
@@ -95,6 +100,7 @@ function d2b_migrate_source_database_form($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_source_database_form_validate($form, &$form_state) {
+  // Connect to the Drupal database to check that it is valid.
   try {
     $form_state['values'] = array_merge($form_state['values'], $form_state['input']);
     $source = $form_state['values'];
@@ -125,14 +131,17 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
  */
 function d2b_migrate_source_database_form_submit($form, &$form_state) {
   $item = $form_state['values']['item'];
+  // For some reason, the info is not in form_state values. Use input.
+  // This should be OK since we validate the input above.
   $form_state['values'] = array_merge($form_state['values'], $form_state['input']);
 
   $item->edit_form_submit($form, $form_state);
 
-  // config_set('d2b_migrate', 'source_db_machine_name', $form_state['values']['machine_name']);
+  // Save the BAM database name in config so we can use it later.
+  // @Todo: delete this config file after the upgrade completes.
   config_set('d2b_migrate.settings', 'source_db_machine_name', $form_state['values']['machine_name']);
   backdrop_set_message(t('Source database has been saved.'));
-  $form_state['redirect'] = 'd2b-migrate-analysis';
+  $form_state['redirect'] = 'admin/config/development/d2b-migrate/analysis';
 }
 
 function d2b_migrate_analysis_form($form, &$form_state) {
@@ -201,8 +210,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_analysis_form_submit($form, &$form_state) {
-  // backdrop_set_message(t('Source database has been saved.'));
-  $form_state['redirect'] = 'd2b-migrate-backup';
+  $form_state['redirect'] = 'admin/config/development/d2b-migrate/backup';
 }
 
 /**
@@ -234,6 +242,8 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
 
   foreach ($result as $record) {
     $record->info = unserialize($record->info);
+    // Only include visible contrib modules.
+    // @Todo: contrib themes would still be in this; need to exclude them.
     if (!empty($record->info['hidden'])) {
       continue;
     }
@@ -250,13 +260,21 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   $projects = array();
   _update_process_info_list($projects, $system_list, 'module', FALSE);
 
+  // After we fetch the project list, now we're going to use batch API to
+  // see if there are Backdrop versions of each and save this in the project
+  // metadata. This is quite intensive so we save in upgrade cache once fetched.
   $cached_projects = _update_cache_get('d2b_migrate_get_cached_projects');
   $cached_project_data = array();
+
+  // If we haven't fetched before, then build the batch operation to fetch.
   if (!empty($cached_projects->data)) {
     $cached_project_data = $cached_projects->data;
   }
 
   module_load_include('inc', 'd2b_migrate', 'd2b_migrate.core');
+
+  // Check for projects that are already in Backdrop core. We don't need to 
+  // check for contrib versions of those of course.
   foreach ($projects as $project) {
     if (!isset($cached_project_data[$project['name']])) {
       $core = d2b_migrate_core($projects, $project['name']);
@@ -278,11 +296,11 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
       'error_message' => t('Batch project fetch encountered an error.'),
     );
     batch_set($batch);
-    batch_process('d2b-migrate-analysis');
+    batch_process('admin/config/development/d2b-migrate/analysis');
   }
   else {
     drupal_set_message(t('All projects updated'));
-    $form_state['redirect'] = 'd2b-migrate-analysis';
+    $form_state['redirect'] = 'admin/config/development/d2b-migrate/analysis';
   }
 }
 
@@ -380,7 +398,7 @@ function d2b_migrate_backup_form_backup($form, &$form_state) {
 }
 
 function d2b_migrate_backup_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'd2b-migrate-files';
+  $form_state['redirect'] = 'admin/config/development/d2b-migrate/files';
 }
 
 function d2b_migrate_files_form($form, &$form_state) {
@@ -460,7 +478,7 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
 }
 
 function d2b_migrate_files_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'd2b-migrate-restore';
+  $form_state['redirect'] = 'admin/config/development/d2b-migrate/restore';
 }
 
 /**
@@ -602,6 +620,9 @@ function d2b_migrate_shutdown($settings) {
 
   // The session will have already been written and closed, so we need to write any changes directly.
   _backdrop_session_write(session_id(), session_encode());
+
+  // backdrop_goto() calls t() at some point, on whats now still essentially a D7 database,
+  // which is missing a locale column and causes an exception. So we fake it.
   d2b_migrate_goto();
 }
 
