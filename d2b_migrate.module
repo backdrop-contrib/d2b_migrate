@@ -590,10 +590,10 @@ function d2b_migrate_shutdown($settings) {
   if (_backup_migrate_check_timeout()) {
     backup_migrate_cleanup();
     backup_migrate_backup_fail('The operation timed out. Try increasing your PHP <a href="!url">max_execution_time setting</a>.', array('!url' => 'http://www.php.net/manual/en/info.configuration.php#ini.max-execution-time'), $settings);
-    // The session will have already been written and closed, so we need to write any changes directly.
-    _backdrop_session_write(session_id(), session_encode());
-    // Add a redirect or we'll just get whitescreened.
   }
+
+  // The session will have already been written and closed, so we need to write any changes directly.
+  _backdrop_session_write(session_id(), session_encode());
   d2b_migrate_goto();
 }
 
