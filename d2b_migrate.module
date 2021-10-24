@@ -168,6 +168,11 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     $rows[$project_name] = $row;
   }
 
+  $form['help'] = array(
+    '#type' => 'help',
+    '#markup' => t('Todo: this select table doesnt actually do anything much more than show which modules are enabled on the source site. The plan will be to allow selecting and downloading Backdrop versions here.'),
+  );
+
   $form['projects'] = array(
     '#type' => 'tableselect',
     '#header' => $header,
@@ -330,7 +335,7 @@ function d2b_migrate_backup_form($form, &$form_state) {
 
   $form['help'] = array(
     '#type' => 'help',
-    '#markup' => t('Download a copy of the source database.'),
+    '#markup' => t('Download a copy of the source database. This downloads and also saves to private directory. This is a required step.'),
   );
   $form['backup'] = array(
     '#type' => 'submit',
@@ -340,6 +345,7 @@ function d2b_migrate_backup_form($form, &$form_state) {
   $form['actions'] = array(
     '#type' => 'actions',
   );
+  // @todo: Hide this if the database isnt yet downloaded.
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Next: backup files'),
@@ -381,7 +387,7 @@ function d2b_migrate_backup_form_submit($form, &$form_state) {
 function d2b_migrate_files_form($form, &$form_state) {
   $form['help'] = array(
     '#type' => 'help',
-    '#markup' => t('Copy the files directory on the source site.'),
+    '#markup' => t('Copy the files directory on the source site. This works but disabled by default until better tested. Comment out the #disabled key on the submit button to test'),
   );
   $form['source_url'] = array(
     '#type' => 'textfield',
@@ -390,6 +396,7 @@ function d2b_migrate_files_form($form, &$form_state) {
     '#description' => t('Enter the URL of the existing Drupal 7 site.')
   );
   $form['backup'] = array(
+    '#disabled' => TRUE,
     '#type' => 'submit',
     '#submit' => array('d2b_migrate_files_form_backup'),
     '#value' => t('Copy files'),
@@ -483,7 +490,7 @@ function d2b_migrate_restore_form() {
   $form['backup_upload'] = array(
     '#title' => t('Or upload a backup file'),
     '#type' => 'file',
-    '#description' => t("Upload a backup file created by Backup and Migrate. For other database or file backups please use another tool for import. Max file size: %size", array("%size" => format_size(file_upload_max_size()))),
+    '#description' => t("Not tested. Upload a backup file created by Backup and Migrate. For other database or file backups please use another tool for import. Max file size: %size", array("%size" => format_size(file_upload_max_size()))),
   );
 
   $form['saved'] = array(
