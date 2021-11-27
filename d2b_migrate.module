@@ -6,55 +6,151 @@ define('D2B_MIGRATE_UPDATE_DEFAULT_URL', 'https://updates.backdropcms.org/releas
 * Implements hook_menu().
 */
 function d2b_migrate_menu() {
-  $items['admin/config/development/d2b-migrate/start'] = array(
-    'title' => 'Drupal to Backdrop upgrade',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10,
-  );
-  $items['admin/config/development/d2b-migrate'] = array(
+  $items['d2b-migrate/start'] = array(
   'title' => 'Start',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_start_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('start'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['admin/config/development/d2b-migrate/source'] = array(
+  $items['d2b-migrate/source'] = array(
   'title' => 'Source database setup',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_source_database_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('source'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['admin/config/development/d2b-migrate/analysis'] = array(
+  $items['d2b-migrate/analysis'] = array(
   'title' => 'Source database analysis',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_analysis_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('analysis'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['admin/config/development/d2b-migrate/backup'] = array(
+  $items['d2b-migrate/backup'] = array(
   'title' => 'Set up database backup',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_backup_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('backup'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['admin/config/development/d2b-migrate/files'] = array(
+  $items['d2b-migrate/files'] = array(
   'title' => 'Files backup',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_files_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('files'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
-  $items['admin/config/development/d2b-migrate/restore'] = array(
+  $items['d2b-migrate/restore'] = array(
   'title' => 'Migrate database',
-  'page callback' => 'backdrop_get_form',
-  'page arguments' => array('d2b_migrate_restore_form'),
+  'page callback' => 'd2b_migrate_main_page',
+  'page arguments' => array('restore'),
   'access callback' => TRUE,
   'type' => MENU_CALLBACK,
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function d2b_migrate_theme($existing, $type, $theme, $path) {
+  return array(
+    'd2b_migrate_page' => array(
+      'variables' => array('current_task' => NULL, 'main_content' => NULL),
+      'template' => 'migrate-page',
+    ),
+  );
+}
+
+/**
+ * Add some variables for the projects install theme.
+ *
+ * @param $variables
+ *   An associative array containing:
+ *     - current_task : the current task.
+ */
+function template_preprocess_d2b_migrate_page(&$variables) {
+  $variables['task_list'] = d2b_migrate_task_list($variables['current_task']);
+}
+
+/**
+ * Get a task list to the sidebar area when installing projects.
+ *
+ * This will need to be called from every page of the install process.
+ *
+ * @param $active
+ *   (Optional) Set the active task by key.
+ *
+ * @return string
+ *   The rendered HTML for the installation task list.
+ */
+function d2b_migrate_task_list($active = NULL) {
+  // Default list of tasks.
+  $tasks = array(
+    'start' => t('Start'),
+    'source' => t('Source database setup'),
+    'analysis' => t('Source database analysis'),
+    'backup' => t('Set up database backup'),
+    'files' => t('Files backup'),
+    'restore' => t('Migrate database'),
+  );
+
+  require_once BACKDROP_ROOT . '/core/includes/theme.maintenance.inc';
+
+  return theme('task_list', array('items' => $tasks, 'active' => $active));
+}
+
+/**
+ * Menu callback; page to install projects.
+ *
+ * @param $op
+ *   Operation to preform.
+ *
+ * @return string
+ *   The rendered installation page.
+ */
+function d2b_migrate_main_page($op) {
+  backdrop_add_css(backdrop_get_path('module', 'd2b_migrate') . '/d2b_migrate.css', array('preprocess' => FALSE));
+
+  switch ($op) {
+    case 'start':
+      backdrop_set_title(t("Start"));
+      $content = 'd2b_migrate_start_form';
+      break;
+    case 'source':
+      backdrop_set_title(t("Source database setup"));
+      $content = 'd2b_migrate_source_database_form';
+      break;
+    case 'analysis':
+      backdrop_set_title(t("Source database analysis"));
+      $content = 'd2b_migrate_analysis_form';
+      break;
+    case 'backup':
+      backdrop_set_title(t("Set up database backup"));
+      $content = 'd2b_migrate_backup_form';
+      break;
+    case 'files':
+      backdrop_set_title(t("Files backup"));
+      $content = 'd2b_migrate_files_form';
+      break;
+    case 'restore':
+      backdrop_set_title(t("Migrate database"));
+      $content = 'd2b_migrate_restore_form';
+      break;
+    default:
+      return MENU_NOT_FOUND;
+  }
+  $form = backdrop_get_form($content);
+  return theme('d2b_migrate_page', array('current_task' => $op, 'main_content' => backdrop_render($form)));
+}
+
+function d2b_migrate_admin_paths() {
+  $paths = array(
+    'd2b-migrate/*' => TRUE,
+  );
+  return $paths;
 }
 
 function d2b_migrate_start_form($form, &$form_state) {
@@ -82,7 +178,7 @@ function d2b_migrate_start_form($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_start_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'admin/config/development/d2b-migrate/source';
+  $form_state['redirect'] = 'd2b-migrate/source';
 }
 
 
@@ -141,7 +237,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
   // @Todo: delete this config file after the upgrade completes.
   config_set('d2b_migrate.settings', 'source_db_machine_name', $form_state['values']['machine_name']);
   backdrop_set_message(t('Source database has been saved.'));
-  $form_state['redirect'] = 'admin/config/development/d2b-migrate/analysis';
+  $form_state['redirect'] = 'd2b-migrate/analysis';
 }
 
 function d2b_migrate_analysis_form($form, &$form_state) {
@@ -210,7 +306,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_analysis_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'admin/config/development/d2b-migrate/backup';
+  $form_state['redirect'] = 'd2b-migrate/backup';
 }
 
 /**
@@ -484,7 +580,7 @@ function d2b_migrate_files_form_submit($form, &$form_state) {
 /**
  * The restore/import upload form.
  */
-function d2b_migrate_restore_form() {
+function d2b_migrate_restore_form($form, &$form_state) {
   backup_migrate_include('filters', 'destinations', 'sources');
 
 

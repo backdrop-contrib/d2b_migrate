@@ -1,0 +1,27 @@
+
+/* Installer sidebar only shown on larger screens. */
+.migrate-page-sidebar {
+  display: none;
+}
+/* Larger screens show the progress steps when installing. */
+@media only screen and (min-width: 768px) {
+  .migrate-page-sidebar {
+    display: block;
+    float: left; /* LTR */
+    width: 220px;
+    box-sizing: border-box;
+  }
+  [dir="rtl"] .migrate-page-sidebar {
+    float: right;
+  }
+
+  .migrate-page-main {
+    padding: 0 20px;
+    margin-left: 240px; /* LTR */
+    box-sizing: border-box;
+  }
+  [dir="rtl"] .migrate-page-main {
+    margin-left: 0;
+    margin-right: 240px;
+  }
+}
