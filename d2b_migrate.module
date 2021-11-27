@@ -90,10 +90,10 @@ function d2b_migrate_task_list($active = NULL) {
   // Default list of tasks.
   $tasks = array(
     'start' => t('Start'),
-    'source' => t('Source database setup'),
-    'analysis' => t('Source database analysis'),
-    'backup' => t('Set up database backup'),
-    'files' => t('Files backup'),
+    'source' => t('Source database'),
+    'analysis' => t('Database analysis'),
+    'backup' => t('Database backup'),
+    'files' => t('Backup files'),
     'restore' => t('Migrate database'),
   );
 
@@ -120,15 +120,15 @@ function d2b_migrate_main_page($op) {
       $content = 'd2b_migrate_start_form';
       break;
     case 'source':
-      backdrop_set_title(t("Source database setup"));
+      backdrop_set_title(t("Source database"));
       $content = 'd2b_migrate_source_database_form';
       break;
     case 'analysis':
-      backdrop_set_title(t("Source database analysis"));
+      backdrop_set_title(t("Source analysis"));
       $content = 'd2b_migrate_analysis_form';
       break;
     case 'backup':
-      backdrop_set_title(t("Set up database backup"));
+      backdrop_set_title(t("Save DB backup"));
       $content = 'd2b_migrate_backup_form';
       break;
     case 'files':
@@ -191,6 +191,19 @@ function d2b_migrate_source_database_form($form, &$form_state) {
   return $form;
 }
 
+function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_state, $form_id) {
+dpm($form);
+  $value = uniqid();
+  $form['help'] = array(
+    '#type' => 'help',
+    '#markup' => t('Enter the connection details for the source Drupal 7 site.'),
+  );
+  $form['name']['#type'] = 'value';
+  $form['name']['#value'] = $value;
+  $form['machine_name']['#type'] = 'value';
+  $form['machine_name']['#value'] = $value;
+  $form['actions']['submit']['#value'] = t('Connect');
+}
 
 /**
  * Submit the item edit form.
@@ -244,6 +257,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
 
   $project_data = !empty($projects->data) ? $projects->data : array();
+  backdrop_sort($project_data, array('location' => SORT_STRING));
 
   $header = array(
     'project_name' => array('data' => t('Project name')),
@@ -251,6 +265,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     'location' => t('Location'),
   );
   $rows = array();
+  dpm($project_data);
 
   foreach ($project_data as $project_name => $project) {
     $row = array();
@@ -258,7 +273,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
       $location = t('In core');
     }
     elseif ($project['location'] == 'backdrop') {
-      $location = t('Downloadable via UI');
+      $location = t('Available for download');
     }
     elseif ($project['location'] == 'github') {
       $location = t('Download from GitHub');
@@ -392,11 +407,11 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
       'error_message' => t('Batch project fetch encountered an error.'),
     );
     batch_set($batch);
-    batch_process('admin/config/development/d2b-migrate/analysis');
+    batch_process('d2b-migrate/analysis');
   }
   else {
     drupal_set_message(t('All projects updated'));
-    $form_state['redirect'] = 'admin/config/development/d2b-migrate/analysis';
+    $form_state['redirect'] = 'd2b-migrate/analysis';
   }
 }
 
