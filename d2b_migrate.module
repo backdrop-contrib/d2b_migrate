@@ -257,6 +257,19 @@ function d2b_migrate_analysis_form($form, &$form_state) {
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
 
   $project_data = !empty($projects->data) ? $projects->data : array();
+  // Try and build a real name for the project.
+  foreach ($project_data as $key => $project) {
+    if (backdrop_get_filename('module', $key)) {
+      $location = t('Already downloaded');
+      $project_data[$key]['location'] = 'already_downloaded';
+    }
+    if (isset($project['includes'][$key])) {
+      $project_data[$key]['realname'] = $project['includes'][$key];
+    }
+    else {
+      $project_data[$key]['realname'] = ucfirst($key);
+    }
+  }
   backdrop_sort($project_data, array('location' => SORT_STRING));
 
   $header = array(
@@ -265,24 +278,29 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     'location' => t('Location'),
   );
   $rows = array();
-  dpm($project_data);
 
+  $downloadables = array();
   foreach ($project_data as $project_name => $project) {
+    $form_state['redirect'] = 'admin/installer/install/select_versions';
     $row = array();
     if (isset($project['in_core_since'])) {
       $location = t('In core');
     }
+    elseif ($project['location'] == 'already_downloaded') {
+      $location = t('Already downloaded');
+    }
     elseif ($project['location'] == 'backdrop') {
+      $downloadables[$project_name] = $project;
       $location = t('Available for download');
     }
     elseif ($project['location'] == 'github') {
-      $location = t('Download from GitHub');
+      $location = l(t('Download from GitHub'), 'https://github.com/backdrop-contrib/' . $project_name, array('external' => TRUE, 'attributes' => array('target'=>'_blank')));
     }
     elseif ($project['location'] == 'not_found') {
       $location = t('Not yet ported');
     }
     
-    $row['project_name'] = $project['info']['name'];
+    $row['project_name'] = $project['realname'];
     $row['type'] = t('Module');
     $row['location'] = $location;
     $rows[$project_name] = $row;
@@ -290,21 +308,38 @@ function d2b_migrate_analysis_form($form, &$form_state) {
 
   $form['help'] = array(
     '#type' => 'help',
-    '#markup' => t('Todo: this select table doesnt actually do anything much more than show which modules are enabled on the source site. The plan will be to allow selecting and downloading Backdrop versions here.'),
+    '#markup' => t('Click the "Update project data" button to fetch the list of modules installed on the source Drupal 7 site and see their availability in Backdrop. Click the "Download available projects" button to download all modules listed as "Available for download". Modules available on GitHub must be downloaded manually.'),
   );
 
+  $form['downloadables'] = array(
+    '#type' => 'value',
+    '#value' => $downloadables,
+  );
+
+  $markup = theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'empty' => t('No source module data was found.'),
+    'attributes' => array('class' => array('source-modules-list')),
+   ));
+
   $form['projects'] = array(
-    '#type' => 'tableselect',
-    '#header' => $header,
-    '#options' => $rows,
-    '#empty' => t('No source module data was found.'),
-    '#attributes' => array('class' => array('source-modules-list')),
+    '#markup' => $markup,
+    // '#header' => $header,
+    // '#options' => $rows,
+    // '#empty' => t('No source module data was found.'),
+    // '#attributes' => array('class' => array('source-modules-list')),
   );
 
   $form['fetch'] = array(
     '#type' => 'submit',
     '#submit' => array('d2b_migrate_analysis_fetch_projects'),
-    '#value' => t('Fetch projects'),
+    '#value' => t('Update project data'),
+  );
+  $form['installer'] = array(
+    '#type' => 'submit',
+    '#submit' => array('d2b_migrate_analysis_download_projects'),
+    '#value' => t('Download available projects'),
   );
   $form['actions'] = array(
     '#type' => 'actions',
@@ -315,6 +350,135 @@ function d2b_migrate_analysis_form($form, &$form_state) {
   );
 
   return $form;
+}
+
+/**
+ * Submit the item edit form.
+ */
+function d2b_migrate_analysis_download_projects($form, &$form_state) {
+  module_load_include('inc', 'installer', 'installer.browser');
+
+  $modules = installer_browser_fetch_results(array('items_per_page' => 999, 'type' => 'module'));
+  $all_projects = $modules['projects'];
+
+  $batch_projects = array();
+  foreach ($form_state['values']['downloadables'] as $project_name => $downloadable) {
+    installer_browser_install_queue_add($all_projects[$project_name]);
+    $batch_projects[$project_name] = $all_projects[$project_name];
+  dpm($downloadable);
+  dpm($all_projects[$project_name]);
+  }
+  unset($_SESSION['installer_browser_install_releases_list']);
+
+  d2b_migrate_analysis_batch_download($batch_projects);
+  // $form_state['redirect'] = 'admin/installer/install/select_versions';
+}
+
+/**
+ * Submit the item edit form.
+ */
+function d2b_migrate_analysis_batch_download($projects) {
+  foreach ($projects as $project) {
+    // Get the available releases for this project.
+    $release_data = installer_browser_get_project_release_data($project);
+    if (!$release_data) {
+      backdrop_set_message(t('Could not fetch releases for project %project.', array('%project' => $project['title'])), 'warning');
+      watchdog('installer', 'Could not fetch releases for project %project.', array('%project' => $project['title']), WATCHDOG_ERROR);
+      installer_browser_install_queue_remove($project['name']);
+      continue;
+    }
+
+    // We use the update module to calculate the recommended version.
+    $project_data = array(
+      'existing_major' => 0,
+      'existing_version' => 0,
+      'install_type' => '',
+    );
+    module_load_include('inc', 'update', 'update.compare');
+    update_calculate_project_update_status($project_data, $release_data);
+
+    $releases[$project['name']]['release_name'] = isset($project_data['recommended']) ? $project_data['recommended'] : key($release_data);
+    $releases[$project['name']]['project'] = $project;
+  }
+
+
+  module_load_include('inc', 'installer', 'installer.browser');
+  // Store maintenance_mode setting so we can restore it when done.
+  $_SESSION['maintenance_mode'] = state_get('maintenance_mode', FALSE);
+    //state_set('maintenance_mode', TRUE);
+
+  foreach ($releases as $item) {
+    // Load the selected release.
+    if ($release = installer_browser_get_release($item['release_name'], $item['project'])) {
+      // Add the release to a session variable.
+      $_SESSION['installer_browser_install_releases_list'][$item['release_name']] = $item['project'];
+    }
+  }
+
+  // Install the projects with batch.
+  module_load_include('inc', 'installer', 'installer.manager');
+
+  $queued_releases = installer_browser_get_queued_releases();
+  $operations = array();
+  foreach ($queued_releases as $release_name => $project) {
+    $operations[] = array('_installer_browser_batch_install_release', array($release_name, $project));
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => '_d2b_migrate_analysis_batch_download_finished',
+    'title' => t('Installing projects'),
+    'init_message' => t('Installing projects...'),
+    'progress_message' => t('Installed @current out of @total.'),
+    'error_message' => t('Installation has encountered an error.'),
+    'file' => backdrop_get_path('module', 'installer') . '/installer.browser.inc',
+  );
+  batch_set($batch);
+}
+
+
+/**
+ * Batch API callback: shows a message and finishes up the batch.
+ */
+function _d2b_migrate_analysis_batch_download_finished($success, $results, $operations) {
+  // Although we turn off maintenance mode immediately, the message that the
+  // site is offline displays until a page reload. We wipe the messages cache
+  // here to avoid this.
+  backdrop_get_messages();
+
+  // Restore the maintenance mode to what it was at the start.
+  if (isset($_SESSION['maintenance_mode'])) {
+    state_set('maintenance_mode', $_SESSION['maintenance_mode']);
+    unset($_SESSION['maintenance_mode']);
+  }
+
+  unset($_SESSION['installer_browser_install_releases_list']);
+  if ($success) {
+    if (!empty($results)) {
+      if (!empty($results['failures'])) {
+        backdrop_set_message(format_plural(count($results['failures']), 'Failed to install one project.', 'Failed to install @count projects.'), 'error');
+        foreach($results['failures'] as $message){
+          backdrop_set_message($message, 'error');
+        }
+      }
+    }
+  }
+  else {
+    backdrop_set_message(t('Error installing projects.'), 'error');
+    backdrop_goto('d2b-migrate/analysis');
+  }
+
+  $projects = installer_browser_get_installed_projects();
+  $missing = installer_browser_get_missing_dependencies($projects);
+  // If there are missing dependencies, go to install dependencies.
+  if (count($missing) > 0) {
+    dpm($missing);
+    // @Todo: since projects come from an existing site, youd expect all dependencies
+    // to be in the list, but we could probaby figure some action for this.
+    backdrop_goto('d2b-migrate/analysis');
+  }
+  else {
+    backdrop_goto('d2b-migrate/analysis');
+  }
 }
 
 /**
@@ -370,7 +534,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   module_load_include('inc', 'update', 'update.compare');
   $projects = array();
   _update_process_info_list($projects, $system_list, 'module', FALSE);
-
+  _update_process_info_list($projects, $system_list, 'module', TRUE);
   // After we fetch the project list, now we're going to use batch API to
   // see if there are Backdrop versions of each and save this in the project
   // metadata. This is quite intensive so we save in upgrade cache once fetched.
@@ -391,6 +555,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
       $core = d2b_migrate_core($projects, $project['name']);
     }
   }
+
   $operations = array();
   foreach ($projects as $project) {
     if (!isset($cached_project_data[$project['name']])) {
@@ -445,7 +610,14 @@ function d2b_migrate_analysis_fetch_project($project, &$context) {
 
 function d2b_migrate_analysis_fetch_project_finished($success, $results, $operations) {
   if ($success) {
-    _update_cache_set('d2b_migrate_get_cached_projects', $results['projects'], REQUEST_TIME + 3600);
+    $cached_data = _update_cache_get('d2b_migrate_get_cached_projects');
+    if (!empty($cached_data->data)) {
+      $data = array_merge($cached_data->data, $results['projects']);
+    }
+    else {
+      $data = $results['projects'];
+    }
+    _update_cache_set('d2b_migrate_get_cached_projects', $data, REQUEST_TIME + 3600);
     // Here we could do something meaningful with the results.
     // We just display the number of nodes we processed...
     drupal_set_message(t('@count projects  processed.', array('@count' => count($results['projects']))));
