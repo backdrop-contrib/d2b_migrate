@@ -634,14 +634,38 @@ function d2b_migrate_backup_form($form, &$form_state) {
 
   $settings = _backup_migrate_profile_saved_default_profile();
 
+  list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
+
+  $db_saved = FALSE;
+  $source_db_machine_name = config_get('d2b_migrate.settings', 'source_db_machine_name');
+  foreach ($files as $file) {
+    if ($file->file_info['bam_sourceid'] == $source_db_machine_name) {
+      $db_saved = TRUE;
+    }
+  }
+
+
   $form['help'] = array(
     '#type' => 'help',
     '#markup' => t('Download a copy of the source database. This downloads and also saves to private directory. This is a required step.'),
   );
+  
+  $form['db_saved'] = array(
+    '#access' => $db_saved,
+    '#type' => 'markup',
+    '#markup' => '<div class="d2b-db-saved"><span class="task-item">' . t('Database backup has been saved to private files folder.') . '</span></div>',
+  );
+  //$jslink = "setTimeout(function(){ window.location = '/d2b-migrate/backup'; }, 5000);";
   $form['backup'] = array(
     '#type' => 'submit',
+    '#name' => 'submitbtn',
+		//'#attributes' => array('onclick' => $jslink),
     '#submit' => array('d2b_migrate_backup_form_backup'),
-    '#value' => t('Download database'),
+    '#value' => $db_saved ? t('Re-download database'): t('Download database'),
+  );
+  $form['continue'] = array(
+    '#type' => 'markup',
+    '#markup' => l(t('Click here to continue after the file has downloaded'), 'd2b-migrate/backup'),
   );
   $form['actions'] = array(
     '#type' => 'actions',
@@ -649,6 +673,7 @@ function d2b_migrate_backup_form($form, &$form_state) {
   // @todo: Hide this if the database isnt yet downloaded.
   $form['actions']['submit'] = array(
     '#type' => 'submit',
+    '#access' => $db_saved,
     '#value' => t('Next: backup files'),
     '#submit' => array('d2b_migrate_backup_form_submit'),
   );
@@ -678,6 +703,19 @@ function d2b_migrate_backup_form_backup($form, &$form_state) {
   backup_migrate_ui_manual_backup_perform($settings);
 
   backdrop_set_message(t('Your database has been backed up.'));
+  // backdrop_goto('admin/config/development/d2b-migrate/backup');
+}
+
+/**
+ * AJAX callback to update the add/remove queue on bulk add.
+ */
+function d2b_migrate_backup_form_backup_ajax($form, $form_state) {
+  $commands = array();
+  $commands[] = ajax_command_redirect('admin/config/development/d2b-migrate/backup');
+  return array(
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  );
 }
 
 function d2b_migrate_backup_form_submit($form, &$form_state) {
@@ -703,6 +741,7 @@ function d2b_migrate_files_form($form, &$form_state) {
   );
   $form['actions'] = array(
     '#type' => 'actions',
+    
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',

@@ -25,3 +25,25 @@
     margin-right: 240px;
   }
 }
+
+.d2b-db-saved {
+  padding: 20px;
+  border: 2px solid #CFDE56;
+  margin-bottom: 20px;
+}
+.d2b-db-saved:before {
+  content: ' ';
+  display: inline-block;
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border-radius: 15px;
+  background: #CFDE56 url(../../core/misc/icon-ok.png) no-repeat center center;
+  background-size: 60%;
+}
+.d2b-db-saved .task-item {
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  margin: 0 0 0 2.5em;
+}
