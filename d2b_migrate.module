@@ -192,7 +192,6 @@ function d2b_migrate_source_database_form($form, &$form_state) {
 }
 
 function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_state, $form_id) {
-dpm($form);
   $value = uniqid();
   $form['help'] = array(
     '#type' => 'help',
@@ -365,8 +364,6 @@ function d2b_migrate_analysis_download_projects($form, &$form_state) {
   foreach ($form_state['values']['downloadables'] as $project_name => $downloadable) {
     installer_browser_install_queue_add($all_projects[$project_name]);
     $batch_projects[$project_name] = $all_projects[$project_name];
-  dpm($downloadable);
-  dpm($all_projects[$project_name]);
   }
   unset($_SESSION['installer_browser_install_releases_list']);
 
@@ -471,7 +468,6 @@ function _d2b_migrate_analysis_batch_download_finished($success, $results, $oper
   $missing = installer_browser_get_missing_dependencies($projects);
   // If there are missing dependencies, go to install dependencies.
   if (count($missing) > 0) {
-    dpm($missing);
     // @Todo: since projects come from an existing site, youd expect all dependencies
     // to be in the list, but we could probaby figure some action for this.
     backdrop_goto('d2b-migrate/analysis');
@@ -789,8 +785,11 @@ function d2b_migrate_files_form_submit($form, &$form_state) {
 function d2b_migrate_restore_form($form, &$form_state) {
   backup_migrate_include('filters', 'destinations', 'sources');
 
-
   $form = array();
+  $form['help'] = array(
+    '#type' => 'help',
+    '#markup' => t('This step will empty the database of the current site and restore it with the database file from the Drupal site. After this is complete, you will be redirected to run database updates. <strong>This is the final step and cannot be reversed.</strong>'),
+  );
 
   list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
 
@@ -804,11 +803,10 @@ function d2b_migrate_restore_form($form, &$form_state) {
     '#files' => $files,
   );
 
-
   $form['backup_upload'] = array(
     '#title' => t('Or upload a backup file'),
     '#type' => 'file',
-    '#description' => t("Not tested. Upload a backup file created by Backup and Migrate. For other database or file backups please use another tool for import. Max file size: %size", array("%size" => format_size(file_upload_max_size()))),
+    '#description' => t("Upload a backup file created by Backup and Migrate. Max file size: %size", array("%size" => format_size(file_upload_max_size()))),
   );
 
   $form['saved'] = array(
@@ -843,6 +841,7 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
   if (!$values['backup_saved'] && $file = file_save_upload('backup_upload', $validators)) {
   // if (!$values['backup_saved']) {
     $values['from'] = 'upload';
+
     d2b_migrate_perform_restore('upload', $file->uri, $values);
   }
   else {
@@ -850,10 +849,11 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
     $values['file'] = $values['saved'][$values['backup_saved']];
 
     list($destination, $file_id) = explode('/', $values['file'], 2);
-    d2b_migrate_perform_restore($destination, $file_id, $form_state['values']);
+
+    d2b_migrate_perform_restore($destination, $file_id, $values);
   }
 
-  $form_state['redirect'] = 'core/update.php';
+  // $form_state['redirect'] = 'core/update.php';
 }
 
 
