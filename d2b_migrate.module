@@ -695,46 +695,27 @@ function d2b_migrate_backup_form_backup($form, &$form_state) {
   $database = config_get('d2b_migrate.settings', 'source_db_machine_name');
   $settings->source_id = $database;
 
-/*   // Add the second destination.
-  if (!empty($form_state['values']['copy_destination_id'])) {
-    $settings->destination_id[] = $form_state['values']['copy_destination_id'];
-  }
- */
   backup_migrate_ui_manual_backup_perform($settings);
 
   backdrop_set_message(t('Your database has been backed up.'));
-  // backdrop_goto('admin/config/development/d2b-migrate/backup');
-}
-
-/**
- * AJAX callback to update the add/remove queue on bulk add.
- */
-function d2b_migrate_backup_form_backup_ajax($form, $form_state) {
-  $commands = array();
-  $commands[] = ajax_command_redirect('admin/config/development/d2b-migrate/backup');
-  return array(
-    '#type' => 'ajax',
-    '#commands' => $commands,
-  );
 }
 
 function d2b_migrate_backup_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'admin/config/development/d2b-migrate/files';
+  $form_state['redirect'] = 'd2b-migrate/files';
 }
 
 function d2b_migrate_files_form($form, &$form_state) {
   $form['help'] = array(
     '#type' => 'help',
-    '#markup' => t('Copy the files directory on the source site. This works but disabled by default until better tested. Comment out the #disabled key on the submit button to test'),
+    '#markup' => t('Copy "managed" files from the source site. Managed files are files with a database record. Many files in the public files directory may not have a database record, such as default images and image styles. This method of migrating files requires the file URL be known and accessible over http, and is unreliable. The recommended option for migrating files is to manually copy the directory contents from the server.'),
   );
   $form['source_url'] = array(
     '#type' => 'textfield',
     '#title' => t('Source site URL'),
-    '#default_value' => '',//config_get('d2b_migrate.settings', 'source_url'),
+    '#default_value' => '',
     '#description' => t('Enter the URL of the existing Drupal 7 site.')
   );
   $form['backup'] = array(
-    '#disabled' => TRUE,
     '#type' => 'submit',
     '#submit' => array('d2b_migrate_files_form_backup'),
     '#value' => t('Copy files'),
@@ -783,11 +764,10 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
       $stream = backdrop_realpath('public://');
     }
     elseif (strpos($record, 'private://') === 0) {
-      $dir_path = substr($path_info['dirname'], 11);
-      $stream = backdrop_realpath('private://');
+      continue;
     }
     $source_file = $source_base_path . $dir_path . '/' . $path_info['basename'];
-    $new_dir = $stream . '/nnn/' . $dir_path;
+    $new_dir = $stream . '/' . $dir_path;
     file_prepare_directory($new_dir, FILE_CREATE_DIRECTORY);
     $new_file = $new_dir . '/' . $path_info['basename'];
 
@@ -800,7 +780,7 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
 }
 
 function d2b_migrate_files_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'admin/config/development/d2b-migrate/restore';
+  $form_state['redirect'] = 'd2b-migrate/restore';
 }
 
 /**
