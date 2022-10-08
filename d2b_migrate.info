@@ -3,3 +3,4 @@ description = Migrate from Drupal 7 to Backdrop CMS.
 backdrop = 1.x
 type = module
 dependencies[] = backup_migrate
+configure = d2b-migrate/start
