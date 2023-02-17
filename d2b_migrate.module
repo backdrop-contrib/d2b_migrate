@@ -218,6 +218,7 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
       'username' => $source['user'],
       'password' => $source['pass'],
       'host' => $source['host'],
+      'port' => $source['port'],
       'driver' => $source['scheme']
     );
 
@@ -298,7 +299,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     elseif ($project['location'] == 'not_found') {
       $location = t('Not yet ported');
     }
-    
+
     $row['project_name'] = $project['realname'];
     $row['type'] = t('Module');
     $row['location'] = $location;
@@ -499,13 +500,22 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
     'username' => $source['user'],
     'password' => $source['pass'],
     'host' => $source['host'],
+    'port' => $source['port'],
     'driver' => $source['scheme']
   );
 
   Database::addConnectionInfo('migrateKey', 'default', $d7_database);
   db_set_active('migrateKey');
 
-  $result = db_query('SELECT * FROM {system}');
+  try {
+    $result = db_query('SELECT * FROM {system}');
+  }
+  catch (Exception $exception) {
+    db_set_active();
+    backdrop_set_message(t('Could not connect to the database: "@error".', array('@error' => $exception->getMessage())), 'error');
+    $form_state['redirect'] = 'd2b-migrate/source';
+    return;
+  }
 
   db_set_active();
 
@@ -544,7 +554,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
 
   module_load_include('inc', 'd2b_migrate', 'd2b_migrate.core');
 
-  // Check for projects that are already in Backdrop core. We don't need to 
+  // Check for projects that are already in Backdrop core. We don't need to
   // check for contrib versions of those of course.
   foreach ($projects as $project) {
     if (!isset($cached_project_data[$project['name']])) {
@@ -571,7 +581,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
     batch_process('d2b-migrate/analysis');
   }
   else {
-    drupal_set_message(t('All projects updated'));
+    backdrop_set_message(t('All projects updated'));
     $form_state['redirect'] = 'd2b-migrate/analysis';
   }
 }
@@ -640,12 +650,11 @@ function d2b_migrate_backup_form($form, &$form_state) {
     }
   }
 
-
   $form['help'] = array(
     '#type' => 'help',
     '#markup' => t('Download a copy of the source database. This downloads and also saves to private directory. This is a required step.'),
   );
-  
+
   $form['db_saved'] = array(
     '#access' => $db_saved,
     '#type' => 'markup',
@@ -718,7 +727,6 @@ function d2b_migrate_files_form($form, &$form_state) {
   );
   $form['actions'] = array(
     '#type' => 'actions',
-    
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
