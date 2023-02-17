@@ -377,28 +377,29 @@ function d2b_migrate_analysis_download_projects($form, &$form_state) {
  */
 function d2b_migrate_analysis_batch_download($projects) {
   foreach ($projects as $project) {
-    // Get the available releases for this project.
-    $release_data = installer_browser_get_project_release_data($project);
-    if (!$release_data) {
-      backdrop_set_message(t('Could not fetch releases for project %project.', array('%project' => $project['title'])), 'warning');
-      watchdog('installer', 'Could not fetch releases for project %project.', array('%project' => $project['title']), WATCHDOG_ERROR);
-      installer_browser_install_queue_remove($project['name']);
-      continue;
+    if ($project) {
+      // Get the available releases for this project.
+      $release_data = installer_browser_get_project_release_data($project);
+      if (!$release_data) {
+        backdrop_set_message(t('Could not fetch releases for project %project.', array('%project' => $project['title'])), 'warning');
+        watchdog('installer', 'Could not fetch releases for project %project.', array('%project' => $project['title']), WATCHDOG_ERROR);
+        installer_browser_install_queue_remove($project['name']);
+        continue;
+      }
+
+      // We use the update module to calculate the recommended version.
+      $project_data = array(
+        'existing_major' => 0,
+        'existing_version' => 0,
+        'install_type' => '',
+      );
+      module_load_include('inc', 'update', 'update.compare');
+      update_calculate_project_update_status($project_data, $release_data);
+
+      $releases[$project['name']]['release_name'] = isset($project_data['recommended']) ? $project_data['recommended'] : key($release_data);
+      $releases[$project['name']]['project'] = $project;
     }
-
-    // We use the update module to calculate the recommended version.
-    $project_data = array(
-      'existing_major' => 0,
-      'existing_version' => 0,
-      'install_type' => '',
-    );
-    module_load_include('inc', 'update', 'update.compare');
-    update_calculate_project_update_status($project_data, $release_data);
-
-    $releases[$project['name']]['release_name'] = isset($project_data['recommended']) ? $project_data['recommended'] : key($release_data);
-    $releases[$project['name']]['project'] = $project;
   }
-
 
   module_load_include('inc', 'installer', 'installer.browser');
   // Store maintenance_mode setting so we can restore it when done.
@@ -513,7 +514,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   catch (Exception $exception) {
     db_set_active();
     backdrop_set_message(t('Could not connect to the database: "@error".', array('@error' => $exception->getMessage())), 'error');
-    $form_state['redirect'] = 'd2b-migrate/source';
+    $form_state['redirect'] = 'd2b-migrate/analysis';
     return;
   }
 
