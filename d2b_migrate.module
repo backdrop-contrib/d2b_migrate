@@ -218,6 +218,7 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
       'username' => $source['user'],
       'password' => $source['pass'],
       'host' => $source['host'],
+      'port' => $source['port'],
       'driver' => $source['scheme']
     );
 
@@ -298,7 +299,7 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     elseif ($project['location'] == 'not_found') {
       $location = t('Not yet ported');
     }
-    
+
     $row['project_name'] = $project['realname'];
     $row['type'] = t('Module');
     $row['location'] = $location;
@@ -376,28 +377,29 @@ function d2b_migrate_analysis_download_projects($form, &$form_state) {
  */
 function d2b_migrate_analysis_batch_download($projects) {
   foreach ($projects as $project) {
-    // Get the available releases for this project.
-    $release_data = installer_browser_get_project_release_data($project);
-    if (!$release_data) {
-      backdrop_set_message(t('Could not fetch releases for project %project.', array('%project' => $project['title'])), 'warning');
-      watchdog('installer', 'Could not fetch releases for project %project.', array('%project' => $project['title']), WATCHDOG_ERROR);
-      installer_browser_install_queue_remove($project['name']);
-      continue;
+    if ($project) {
+      // Get the available releases for this project.
+      $release_data = installer_browser_get_project_release_data($project);
+      if (!$release_data) {
+        backdrop_set_message(t('Could not fetch releases for project %project.', array('%project' => $project['title'])), 'warning');
+        watchdog('installer', 'Could not fetch releases for project %project.', array('%project' => $project['title']), WATCHDOG_ERROR);
+        installer_browser_install_queue_remove($project['name']);
+        continue;
+      }
+
+      // We use the update module to calculate the recommended version.
+      $project_data = array(
+        'existing_major' => 0,
+        'existing_version' => 0,
+        'install_type' => '',
+      );
+      module_load_include('inc', 'update', 'update.compare');
+      update_calculate_project_update_status($project_data, $release_data);
+
+      $releases[$project['name']]['release_name'] = isset($project_data['recommended']) ? $project_data['recommended'] : key($release_data);
+      $releases[$project['name']]['project'] = $project;
     }
-
-    // We use the update module to calculate the recommended version.
-    $project_data = array(
-      'existing_major' => 0,
-      'existing_version' => 0,
-      'install_type' => '',
-    );
-    module_load_include('inc', 'update', 'update.compare');
-    update_calculate_project_update_status($project_data, $release_data);
-
-    $releases[$project['name']]['release_name'] = isset($project_data['recommended']) ? $project_data['recommended'] : key($release_data);
-    $releases[$project['name']]['project'] = $project;
   }
-
 
   module_load_include('inc', 'installer', 'installer.browser');
   // Store maintenance_mode setting so we can restore it when done.
@@ -499,13 +501,22 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
     'username' => $source['user'],
     'password' => $source['pass'],
     'host' => $source['host'],
+    'port' => $source['port'],
     'driver' => $source['scheme']
   );
 
   Database::addConnectionInfo('migrateKey', 'default', $d7_database);
   db_set_active('migrateKey');
 
-  $result = db_query('SELECT * FROM {system}');
+  try {
+    $result = db_query('SELECT * FROM {system}');
+  }
+  catch (Exception $exception) {
+    db_set_active();
+    backdrop_set_message(t('Could not connect to the database: "@error".', array('@error' => $exception->getMessage())), 'error');
+    $form_state['redirect'] = 'd2b-migrate/analysis';
+    return;
+  }
 
   db_set_active();
 
@@ -544,7 +555,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
 
   module_load_include('inc', 'd2b_migrate', 'd2b_migrate.core');
 
-  // Check for projects that are already in Backdrop core. We don't need to 
+  // Check for projects that are already in Backdrop core. We don't need to
   // check for contrib versions of those of course.
   foreach ($projects as $project) {
     if (!isset($cached_project_data[$project['name']])) {
@@ -571,7 +582,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
     batch_process('d2b-migrate/analysis');
   }
   else {
-    drupal_set_message(t('All projects updated'));
+    backdrop_set_message(t('All projects updated'));
     $form_state['redirect'] = 'd2b-migrate/analysis';
   }
 }
@@ -640,12 +651,11 @@ function d2b_migrate_backup_form($form, &$form_state) {
     }
   }
 
-
   $form['help'] = array(
     '#type' => 'help',
     '#markup' => t('Download a copy of the source database. This downloads and also saves to private directory. This is a required step.'),
   );
-  
+
   $form['db_saved'] = array(
     '#access' => $db_saved,
     '#type' => 'markup',
@@ -718,7 +728,6 @@ function d2b_migrate_files_form($form, &$form_state) {
   );
   $form['actions'] = array(
     '#type' => 'actions',
-    
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
