@@ -6,6 +6,13 @@ define('D2B_MIGRATE_UPDATE_DEFAULT_URL', 'https://updates.backdropcms.org/releas
 * Implements hook_menu().
 */
 function d2b_migrate_menu() {
+  $items['d2b-migrate'] = array(
+    'title' => 'Start',
+    'page callback' => 'd2b_migrate_main_page',
+    'page arguments' => array('start'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    );
   $items['d2b-migrate/start'] = array(
   'title' => 'Start',
   'page callback' => 'd2b_migrate_main_page',
@@ -65,6 +72,22 @@ function d2b_migrate_theme($existing, $type, $theme, $path) {
 }
 
 /**
+ * Implements hook_requirements().
+ */
+function d2b_migrate_requirements($phase) {
+  $requirements = array();
+  if ($phase == 'runtime') {
+    $requirements['d2b_migrate'] = array(
+      'title' => 'Drupal 2 Backdrop Migrate',
+      'value' => t('Use with caution'),
+      'severity' => REQUIREMENT_ERROR,
+      'description' => t('This is a development module and should be used with caution.'),
+    );
+  }
+  return $requirements;
+}
+
+/**
  * Add some variables for the projects install theme.
  *
  * @param $variables
@@ -89,12 +112,24 @@ function template_preprocess_d2b_migrate_page(&$variables) {
 function d2b_migrate_task_list($active = NULL) {
   // Default list of tasks.
   $tasks = array(
-    'start' => t('Start'),
-    'source' => t('Source database'),
-    'analysis' => t('Database analysis'),
-    'backup' => t('Database backup'),
-    'files' => t('Backup files'),
-    'restore' => t('Migrate database'),
+    'start' => t('<a href="@url">Start</a>', array(
+      '@url' => url('d2b-migrate/start'),
+    )),
+    'source' => t('<a href="@url">Source database</a>', array(
+      '@url' => url('d2b-migrate/source'),
+    )),
+    'analysis' => t('<a href="@url">Database analysis</a>', array(
+      '@url' => url('d2b-migrate/analysis'),
+    )),
+    'backup' => t('<a href="@url">Database backup</a>', array(
+      '@url' => url('d2b-migrate/backup'),
+    )),
+    'files' => t('<a href="@url">Backup files</a>', array(
+      '@url' => url('d2b-migrate/files'),
+    )),
+    'restore' => t('<a href="@url">Migrate database</a>', array(
+      '@url' => url('d2b-migrate/restore'),
+    )),
   );
 
   require_once BACKDROP_ROOT . '/core/includes/theme.maintenance.inc';
@@ -148,6 +183,7 @@ function d2b_migrate_main_page($op) {
 
 function d2b_migrate_admin_paths() {
   $paths = array(
+    'd2b-migrate' => TRUE,
     'd2b-migrate/*' => TRUE,
   );
   return $paths;
