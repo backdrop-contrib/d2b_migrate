@@ -72,22 +72,6 @@ function d2b_migrate_theme($existing, $type, $theme, $path) {
 }
 
 /**
- * Implements hook_requirements().
- */
-function d2b_migrate_requirements($phase) {
-  $requirements = array();
-  if ($phase == 'runtime') {
-    $requirements['d2b_migrate'] = array(
-      'title' => 'Drupal 2 Backdrop Migrate',
-      'value' => t('Use with caution'),
-      'severity' => REQUIREMENT_ERROR,
-      'description' => t('This is a development module and should be used with caution.'),
-    );
-  }
-  return $requirements;
-}
-
-/**
  * Add some variables for the projects install theme.
  *
  * @param $variables
