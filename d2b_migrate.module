@@ -96,24 +96,12 @@ function template_preprocess_d2b_migrate_page(&$variables) {
 function d2b_migrate_task_list($active = NULL) {
   // Default list of tasks.
   $tasks = array(
-    'start' => t('<a href="@url">Start</a>', array(
-      '@url' => url('d2b-migrate/start'),
-    )),
-    'source' => t('<a href="@url">Source database</a>', array(
-      '@url' => url('d2b-migrate/source'),
-    )),
-    'analysis' => t('<a href="@url">Database analysis</a>', array(
-      '@url' => url('d2b-migrate/analysis'),
-    )),
-    'backup' => t('<a href="@url">Database backup</a>', array(
-      '@url' => url('d2b-migrate/backup'),
-    )),
-    'files' => t('<a href="@url">Backup files</a>', array(
-      '@url' => url('d2b-migrate/files'),
-    )),
-    'restore' => t('<a href="@url">Migrate database</a>', array(
-      '@url' => url('d2b-migrate/restore'),
-    )),
+    'start' => l(t('Start'), 'd2b-migrate/start'),
+    'source' => l(t('Source database'), 'd2b-migrate/source'),
+    'analysis' => l(t('Database analysis'), 'd2b-migrate/analysis'),
+    'backup' => l(t('Database backup'), 'd2b-migrate/backup'),
+    'files' => l(t('Backup files'), 'd2b-migrate/files'),
+    'restore' => l(t('Migrate database'), 'd2b-migrate/restore'),
   );
 
   require_once BACKDROP_ROOT . '/core/includes/theme.maintenance.inc';
