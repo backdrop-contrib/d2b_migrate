@@ -1,0 +1,24 @@
+<?php
+/**
+ * @file
+ * Install and update hooks for D2B Migrate module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function d2b_migrate_requirements($phase) {
+  $requirements = array();
+  if ($phase == 'runtime') {
+    $requirements['d2b_migrate'] = array(
+      'title' => 'Drupal 2 Backdrop Migrate',
+      'value' => t('Use with caution'),
+      'severity' => REQUIREMENT_WARNING,
+      'description' =>
+        t('This module is a development tool only. If not actively migrating a Drupal site to Backdrop, disable this module from the <a href="!url">Modules page</a>.', array('!url' => url('admin/modules')))
+        . ' ' .
+        t('To run a migration visit the <a href="!url">D2B Migrate start page</a>.', array('!url' => url('d2b-migrate/start'))),
+    );
+  }
+  return $requirements;
+}

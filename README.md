@@ -27,4 +27,5 @@ Current Maintainers
 -------------------
 
 - docwilmot (https://github.com/docwilmot)
+- Nate Lampton (https://github.com/quicksketch)
 
