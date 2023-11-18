@@ -109,12 +109,12 @@ function template_preprocess_d2b_migrate_page(&$variables) {
 function d2b_migrate_task_list($active = NULL) {
   // Default list of tasks.
   $tasks = array(
-    'start' => t('Start'),
-    'source' => t('Source database'),
-    'analysis' => t('Database analysis'),
-    'backup' => t('Database backup'),
-    'files' => t('Backup files'),
-    'restore' => t('Migrate database'),
+    'start' => l(t('Start'), 'd2b-migrate/start'),
+    'source' => l(t('Source database'), 'd2b-migrate/source'),
+    'analysis' => l(t('Database analysis'), 'd2b-migrate/analysis'),
+    'backup' => l(t('Database backup'), 'd2b-migrate/backup'),
+    'files' => l(t('Backup files'), 'd2b-migrate/files'),
+    'restore' => l(t('Migrate database'), 'd2b-migrate/restore'),
   );
 
   require_once BACKDROP_ROOT . '/core/includes/theme.maintenance.inc';
@@ -168,6 +168,7 @@ function d2b_migrate_main_page($op) {
 
 function d2b_migrate_admin_paths() {
   $paths = array(
+    'd2b-migrate' => TRUE,
     'd2b-migrate/*' => TRUE,
   );
   return $paths;
