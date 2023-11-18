@@ -76,22 +76,6 @@ function template_preprocess_d2b_migrate_page(&$variables) {
 }
 
 /**
- * Implements hook_requirements().
- */
-function d2b_migrate_requirements($phase) {
-  $requirements = array();
-  if ($phase == 'runtime') {
-    $requirements['d2b_migrate'] = array(
-      'title' => 'Drupal 2 Backdrop Migrate',
-      'value' => t('Use with caution'),
-      'severity' => REQUIREMENT_ERROR,
-      'description' => t('This is a development module and should be used with caution.'),
-    );
-  }
-  return $requirements;
-}
-
-/**
  * Get a task list to the sidebar area when installing projects.
  *
  * This will need to be called from every page of the install process.
