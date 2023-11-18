@@ -627,12 +627,12 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
     _update_cache_set('d2b_migrate_get_cached_projects', $data, REQUEST_TIME + 3600);
     // Here we could do something meaningful with the results.
     // We just display the number of nodes we processed...
-    drupal_set_message(t('@count projects  processed.', array('@count' => count($results['projects']))));
+    backdrop_set_message(t('@count projects  processed.', array('@count' => count($results['projects']))));
   } else {
     // An error occurred.
     // $operations contains the operations that remained unprocessed.
     $error_operation = reset($operations);
-    drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+    backdrop_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
   }
 }
 
