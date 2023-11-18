@@ -1,4 +1,4 @@
-name = Drupal to Backdrop Migrate
+name = Drupal to Backdrop Migrate (D2B)
 description = Migrate from Drupal 7 to Backdrop CMS.
 backdrop = 1.x
 type = module
