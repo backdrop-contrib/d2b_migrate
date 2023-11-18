@@ -25,7 +25,14 @@
     margin-right: 240px;
   }
 }
-
+/* Although the sidebar items are linked, show as default text color. */
+.migrate-page-sidebar a {
+  color: inherit;
+  text-decoration: none;
+}
+.migrate-page-sidebar a:hover {
+  text-decoration: underline;
+}
 .d2b-db-saved {
   padding: 20px;
   border: 2px solid #CFDE56;
