@@ -10,6 +10,7 @@ Installation
 1. Create a new empty BackdropCMS site.
 2. Install this module and Backup and Migrate module.
 3. Enable both modules at the module administration page.
+4. Click "Configure" button and you will see the interface for migration process.
 
 This module will connect to the Drupal site, show information about which modules are available to download, or are in core, 
 and allow to install available modules automatically. In the next step the Drupal 7 database will be imported into your new site 
