@@ -275,6 +275,7 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
 }
 
 function d2b_migrate_analysis_form($form, &$form_state) {
+  backdrop_add_js(backdrop_get_path('module', 'd2b_migrate') .'/d2b_migrate.js');
   $projects = _update_cache_get('d2b_migrate_get_cached_projects');
 
   $project_data = !empty($projects->data) ? $projects->data : array();
@@ -301,7 +302,9 @@ function d2b_migrate_analysis_form($form, &$form_state) {
   $rows = array();
 
   $downloadables = array();
+  $default_values = array();
   foreach ($project_data as $project_name => $project) {
+    $default_values[$project_name] = 1;
     $form_state['redirect'] = 'admin/installer/install/select_versions';
     $row = array();
     if (isset($project['in_core_since'])) {
@@ -337,19 +340,12 @@ function d2b_migrate_analysis_form($form, &$form_state) {
     '#value' => $downloadables,
   );
 
-  $markup = theme('table', array(
-    'header' => $header,
-    'rows' => $rows,
-    'empty' => t('No source module data was found.'),
-    'attributes' => array('class' => array('source-modules-list')),
-   ));
-
   $form['projects'] = array(
-    '#markup' => $markup,
-    // '#header' => $header,
-    // '#options' => $rows,
-    // '#empty' => t('No source module data was found.'),
-    // '#attributes' => array('class' => array('source-modules-list')),
+    '#type' => 'tableselect',
+    '#default_value' => $default_values,
+    '#header' => $header,
+    '#options' => $rows,
+    '#empty' => t('No source module data was found.'),
   );
 
   $form['fetch'] = array(
