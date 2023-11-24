@@ -380,13 +380,15 @@ function d2b_migrate_analysis_download_projects($form, &$form_state) {
 
   $batch_projects = array();
   foreach ($form_state['values']['downloadables'] as $project_name => $downloadable) {
-    installer_browser_install_queue_add($all_projects[$project_name]);
-    $batch_projects[$project_name] = $all_projects[$project_name];
+    if ($form_state['values']['projects'][$project_name]) {
+      installer_browser_install_queue_add($all_projects[$project_name]);
+      $batch_projects[$project_name] = $all_projects[$project_name];
+    }
   }
+
   unset($_SESSION['installer_browser_install_releases_list']);
 
   d2b_migrate_analysis_batch_download($batch_projects);
-  // $form_state['redirect'] = 'admin/installer/install/select_versions';
 }
 
 /**
