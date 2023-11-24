@@ -267,9 +267,8 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
 
   $item->edit_form_submit($form, $form_state);
 
-  // Save the BAM database name in config so we can use it later.
-  // @Todo: delete this config file after the upgrade completes.
-  config_set('d2b_migrate.settings', 'source_db_machine_name', $form_state['values']['machine_name']);
+  // Save the BAM database name in state so we can use it later.
+  state_set('d2b_migrate_source_db_name', $form_state['values']['machine_name']);
   backdrop_set_message(t('Source database has been saved.'));
   $form_state['redirect'] = 'd2b-migrate/analysis';
 }
@@ -510,7 +509,7 @@ function d2b_migrate_analysis_form_submit($form, &$form_state) {
  */
 function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   backup_migrate_include('sources');
-  $database = config_get('d2b_migrate.settings', 'source_db_machine_name');
+  $database = state_get('d2b_migrate_source_db_name', '');
 
   $sources = backup_migrate_get_sources();
   $source = $sources[$database]->dest_url;
@@ -663,7 +662,7 @@ function d2b_migrate_backup_form($form, &$form_state) {
   list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
 
   $db_saved = FALSE;
-  $source_db_machine_name = config_get('d2b_migrate.settings', 'source_db_machine_name');
+  $source_db_machine_name = state_get('d2b_migrate_source_db_name', '');
   foreach ($files as $file) {
     if ($file->file_info['bam_sourceid'] == $source_db_machine_name) {
       $db_saved = TRUE;
@@ -717,7 +716,7 @@ function d2b_migrate_backup_form_backup($form, &$form_state) {
 
   $settings->destination_id = array('manual', 'download');
 
-  $database = config_get('d2b_migrate.settings', 'source_db_machine_name');
+  $database = state_get('d2b_migrate_source_db_name', '');
   $settings->source_id = $database;
 
   backup_migrate_perform_backup($settings);
@@ -759,7 +758,7 @@ function d2b_migrate_files_form($form, &$form_state) {
 
 function d2b_migrate_files_form_backup($form, &$form_state) {
   $source_base_path = $form_state['values']['source_url'];
-  $source_database = config_get('d2b_migrate.settings', 'source_db_machine_name');
+  $source_database = state_get('d2b_migrate_source_db_name', '');
 
   backup_migrate_include('sources');
 
