@@ -548,7 +548,6 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
 
   $sources = backup_migrate_get_sources();
   $source = $sources[$database]->dest_url;
-  dpm($source);
 
   $d7_database = array(
     'database' => $source['path'],
