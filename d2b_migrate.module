@@ -349,9 +349,11 @@ function d2b_migrate_analysis_form($form, &$form_state) {
       $location = t('Available for download');
     }
     elseif ($project['location'] == 'github') {
+      $default_values[$project_name] = 0;
       $location = l(t('Download from GitHub'), 'https://github.com/backdrop-contrib/' . $project_name, array('external' => TRUE, 'attributes' => array('target'=>'_blank')));
     }
     elseif ($project['location'] == 'not_found') {
+      $default_values[$project_name] = 0;
       $location = t('Not yet ported');
     }
 
