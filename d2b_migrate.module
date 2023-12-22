@@ -116,7 +116,6 @@ function d2b_migrate_task_list($active = NULL) {
     'source' => l(t('Source database'), 'd2b-migrate/source'),
     'analysis' => l(t('Database analysis'), 'd2b-migrate/analysis'),
     'files' => l(t('Backup files'), 'd2b-migrate/files'),
-    'backup' => l(t('Prepare upgrade'), 'd2b-migrate/backup'),
     'restore' => l(t('Final upgrade'), 'd2b-migrate/restore'),
   );
 
@@ -155,10 +154,6 @@ function d2b_migrate_main_page($op) {
     case 'analysis':
       backdrop_set_title(t("Source analysis"));
       $content = 'd2b_migrate_analysis_form';
-      break;
-    case 'backup':
-      backdrop_set_title(t("Save DB backup"));
-      $content = 'd2b_migrate_backup_form';
       break;
     case 'files':
       backdrop_set_title(t("Files backup"));
@@ -802,78 +797,6 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
   }
 }
 
-function d2b_migrate_backup_form($form, &$form_state) {
-  $source = d2b_migrate_get_active_database();
-  backup_migrate_include('profiles');
-
-  $settings = _backup_migrate_profile_saved_default_profile();
-
-  list($files, $fetch_time, $remote) = backup_migrate_get_saved_backups();
-
-  $db_saved = FALSE;
-  $source_db_machine_name = state_get('d2b_migrate_source_db_name', '');
-  foreach ($files as $file) {
-    if ($file->file_info['bam_sourceid'] == $source_db_machine_name) {
-      $db_saved = TRUE;
-    }
-  }
-
-  $form['help'] = array(
-    '#type' => 'help',
-    '#markup' => t('This step prepares the D7 database data for transfer into the Backdrop database. This is a required step.'),
-  );
-
-  $form['db_saved'] = array(
-    '#access' => $db_saved,
-    '#type' => 'markup',
-    '#markup' => '<div class="d2b-db-saved"><span class="task-item">' . t('Databaseis prepared for upgrade.') . '</span></div>',
-  );
-  //$jslink = "setTimeout(function(){ window.location = '/d2b-migrate/backup'; }, 5000);";
-  $form['backup'] = array(
-    '#type' => 'submit',
-    '#name' => 'submitbtn',
-		//'#attributes' => array('onclick' => $jslink),
-    '#submit' => array('d2b_migrate_backup_form_backup'),
-    '#value' => t('Prepare database'),
-    '#disabled' => empty($source),
-  );
-  $form['actions'] = array(
-    '#type' => 'actions',
-  );
-  // @todo: Hide this if the database isnt yet downloaded.
-  $form['actions']['submit'] = array(
-    '#type' => 'submit',
-    '#disabled' => empty($source),
-    '#value' => t('Next: Final upgrade'),
-    '#submit' => array('d2b_migrate_backup_form_submit'),
-  );
-  return $form;
-}
-
-function d2b_migrate_backup_form_backup($form, &$form_state) {
-  backup_migrate_include('sources');
-  backup_migrate_include('destinations');
-  backup_migrate_include('profiles');
-
-  $sources = backup_migrate_get_sources();
-  $destinations = backup_migrate_get_destinations();
-
-  $settings = _backup_migrate_profile_saved_default_profile();
-
-  $settings->destination_id = array('manual');
-
-  $database = state_get('d2b_migrate_source_db_name', '');
-  $settings->source_id = $database;
-
-  backup_migrate_perform_backup($settings);
-
-  $form_state['redirect'] = 'd2b-migrate/restore';
-}
-
-function d2b_migrate_backup_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'd2b-migrate/restore';
-}
-
 function d2b_migrate_files_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
   $form['help'] = array(
@@ -952,15 +875,15 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
 }
 
 function d2b_migrate_files_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'd2b-migrate/backup';
+  $form_state['redirect'] = 'd2b-migrate/restore';
 }
+
 
 /**
  * The restore/import upload form.
  */
 function d2b_migrate_restore_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
-  backup_migrate_include('filters', 'destinations', 'sources');
 
   $form = array();
   $form['help'] = array(
@@ -968,41 +891,13 @@ function d2b_migrate_restore_form($form, &$form_state) {
     '#markup' => t('This step will import the database from the Drupal site, and then, after this is complete, you will be redirected to run database updates to upgrade this Drupal database to Backdrop. <strong>This is the final step and cannot be reversed.</strong>'),
   );
 
-  $destinations = backup_migrate_get_destinations('manual backup');
-
-  $sort = array();
-  foreach ($destinations as $destination) {
-    $destination->file_cache_clear();
-    $dest_files = $destination->list_files();
-    foreach ($dest_files as $id => $file) {
-      $info = $file->info();
-      $sort[] = $file->info();
-    }
-  }
-  if ($sort) {
-    backdrop_sort($sort, array('filetime' => SORT_NUMERIC), SORT_DESC);
-    $latest_backup_file = reset($sort);
-
-    $form['db_saved'] = array(
-      '#access' => $db_saved,
-      '#type' => 'markup',
-      '#markup' => '<div class="d2b-db-saved"><span class="task-item">' . t('Source database is prepared for upgrade.') . '</span></div>',
-    );
-  }
-  else {
-    backdrop_set_message(t('Source database is not ready for upgrade.'), 'warning');
-  }
-  $form['file'] = array(
-    '#type' => 'value',
-    '#value' => $latest_backup_file['file_id'],
-  );
 
   $form['actions'] = array(
     '#type' => 'actions',
   );
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#disabled' => empty($source) || empty($sort),
+    '#disabled' => empty($source),
     '#value' => t('Upgrade Drupal 7 database'),
   );
 
@@ -1013,14 +908,35 @@ function d2b_migrate_restore_form($form, &$form_state) {
  * The restore/import upload form.
  */
 function d2b_migrate_restore_form_submit($form, &$form_state) {
+  backup_migrate_include('sources');
   backup_migrate_include('destinations');
-  $validators = array('file_validate_extensions' => array('gz zip sql mysql bz bz2'));
+  backup_migrate_include('profiles');
 
-  $values = $form_state['values'];
+  $source = d2b_migrate_get_source();
+  if ($source['type'] == 'db') {
+    // Backup file
+    $destinations = backup_migrate_get_destinations();
+
+    $settings = _backup_migrate_profile_saved_default_profile();
+
+    $settings->destination_id = array('manual');
+
+    $database = state_get('d2b_migrate_source_db_name', '');
+    $settings->source_id = $database;
+
+    $file = backup_migrate_perform_backup($settings);
+  }
+  elseif ($source['type'] == 'file') {
+    $file = new backup_file(array('filepath' => $source['source']));
+  }
+
+
+  // Restore.
+  $values = array();
   $values['source_id'] = 'db';
   $values['from'] = 'saved';
 
-  d2b_migrate_perform_restore('manual', $values['file'], $values);
+  d2b_migrate_perform_restore('manual', $file, $values);
 }
 
 
