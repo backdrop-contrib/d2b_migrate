@@ -451,6 +451,10 @@ function d2b_migrate_analysis_form($form, &$form_state) {
       $default_values[$project_name] = 0;
       $location = t('Not yet ported');
     }
+    if (trim($project['project_status'], "'") == 0) {
+      $default_values[$project_name] = 0;
+      $location .= t(' <em>(Disabled in source)</em>');
+    }
 
     $row['project_name'] = $project['realname'];
     $row['type'] = t('Module');
