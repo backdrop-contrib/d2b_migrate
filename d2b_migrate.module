@@ -640,6 +640,7 @@ function d2b_migrate_analysis_form_submit($form, &$form_state) {
  * Submit the item edit form.
  */
 function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
+  _update_cache_clear('d2b_migrate_get_cached_projects');
   backup_migrate_include('sources');
   // $database = state_get('d2b_migrate_source_db_name', '');
   $db_source = d2b_migrate_get_source();
@@ -1091,11 +1092,11 @@ function d2b_migrate_parse_sql($sql_path) {
         // field. We try and concatenate them here.
         $blob_source = '';
         $data_count = count($line['data']);
-        if ($data_count > 9) {
+        //if ($data_count > 9) {
           for ($i = 8; $i < $data_count; $i++) {
             $blob_source .= $line['data'][$i]['base_expr'];
           }
-        }
+        //}
         $blob_source = str_replace("''", "'", $blob_source);
         $blob_data = trim($blob_source, "'");
         // suppress unserialize errors because cant fix all of them.
@@ -1108,6 +1109,7 @@ function d2b_migrate_parse_sql($sql_path) {
   $projects = array();
   d2b_migrate_process_info_list($projects, $modules, 'module', TRUE);
 
+dpm($projects);
   return $projects;
 }
 
