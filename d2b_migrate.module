@@ -1076,18 +1076,30 @@ function d2b_migrate_parse_sql($sql_path) {
         if (strpos($line['data'][0]['base_expr'], 'modules/') === 1) {
           continue;
         }
+        
         $name = str_replace("'", "", $line['data'][1]['base_expr']);
         $modules[$name] = new stdClass();
         foreach ($system_array as $key => $field) {
-          $modules[$name]->{$field} = $line['data'][$key]['base_expr'];
+          $modules[$name]->{$field} = trim($line['data'][$key]['base_expr'], '\'"');
         }
         // PHPSQLParser messes up with negative (e.g. -1) schema and weight
         // values, and we dont need them anyway so just set as 0.
         $modules[$name]->schema_version = 0;
         $modules[$name]->weight = 0;
-        $blob_source = end($line['data']);
-        $blob_data = trim($blob_source['base_expr'], '\'"');
-        $modules[$name]->info = unserialize($blob_data);
+
+        // The PHPSQLParser messes up on quotes and splits the serialized info
+        // field. We try and concatenate them here.
+        $blob_source = '';
+        $data_count = count($line['data']);
+        if ($data_count > 9) {
+          for ($i = 8; $i < $data_count; $i++) {
+            $blob_source .= $line['data'][$i]['base_expr'];
+          }
+        }
+        $blob_source = str_replace("''", "'", $blob_source);
+        $blob_data = trim($blob_source, "'");
+        // suppress unserialize errors because cant fix all of them.
+        $modules[$name]->info = @unserialize($blob_data);
       }
     }
   }
@@ -1131,8 +1143,7 @@ function d2b_migrate_process_info_list(&$projects, $list, $project_type, $status
     // which is left alone by tar and correctly set to the time the .info file
     // was unpacked.
     if (!isset($file->info['_info_file_ctime'])) {
-      $info_filename = dirname($file->uri) . '/' . $file->name . '.info';
-      $file->info['_info_file_ctime'] = filectime($info_filename);
+      $file->info['_info_file_ctime'] = 1525159574;
     }
 
     if (!isset($file->info['datestamp'])) {
@@ -1164,8 +1175,8 @@ function d2b_migrate_process_info_list(&$projects, $list, $project_type, $status
         'includes' => array($file->name => $includes_name),
         'project_type' => $project_name == 'backdrop' ? 'core' : $project_display_type,
         'project_status' => $file->status,
-        'sub_themes' => $sub_themes,
-        'base_themes' => $base_themes,
+        'sub_themes' => 'subtheme',
+        'base_themes' => 'subtheme',
       );
     }
     elseif ($projects[$project_name]['project_type'] == $project_display_type) {
