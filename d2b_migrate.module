@@ -22,6 +22,13 @@ function d2b_migrate_menu() {
     'access arguments' => array('execute d2b'),
     'type' => MENU_CALLBACK,
   );
+  $items['admin/config/system/d2b-migrate'] = array(
+    'title' => 'Drupal to Backdrop Migrate',
+    'page callback' => 'd2b_migrate_main_page',
+    'page arguments' => array('start'),
+    'access arguments' => array('execute d2b'),
+    'type' => MENU_NORMAL_ITEM,
+  );
   $items['d2b-migrate/source'] = array(
     'title' => 'Source database setup',
     'page callback' => 'd2b_migrate_main_page',
