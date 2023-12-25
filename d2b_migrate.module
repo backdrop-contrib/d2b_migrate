@@ -844,27 +844,31 @@ function d2b_migrate_files_form($form, &$form_state) {
 
 function d2b_migrate_files_form_backup($form, &$form_state) {
   $source_base_path = $form_state['values']['source_url'];
-  $source_database = state_get('d2b_migrate_source_db_name', '');
+  $data_source = d2b_migrate_get_source();
 
-  backup_migrate_include('sources');
+  if ($data_source['type'] == 'db') {
+    $source_database = $data_source['source'];
+    backup_migrate_include('sources');
 
-  $sources = backup_migrate_get_sources();
-  $source = $sources[$source_database]->dest_url;
+    $sources = backup_migrate_get_sources();
+    $source = $sources[$source_database]->dest_url;
 
-  $d7_database = array(
-    'database' => $source['path'],
-    'username' => $source['user'],
-    'password' => $source['pass'],
-    'host' => $source['host'],
-    'driver' => $source['scheme']
-  );
+    $d7_database = array(
+      'database' => $source['path'],
+      'username' => $source['user'],
+      'password' => $source['pass'],
+      'host' => $source['host'],
+      'driver' => $source['scheme']
+    );
 
-  Database::addConnectionInfo('migrateKey', 'default', $d7_database);
-  db_set_active('migrateKey');
+    Database::addConnectionInfo('migrateKey', 'default', $d7_database);
+    db_set_active('migrateKey');
 
-  $result = db_query('SELECT uri FROM {file_managed}')->fetchCol();
+    $result = db_query('SELECT uri FROM {file_managed}')->fetchCol();
+    dpm($result);
 
-  db_set_active();
+    db_set_active();
+  }
 
   foreach ($result as $record) {
     $path_info = pathinfo($record);
@@ -875,16 +879,18 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
     elseif (strpos($record, 'private://') === 0) {
       continue;
     }
-    $source_file = $source_base_path . $dir_path . '/' . $path_info['basename'];
+    $source_file = $source_base_path . 'sites/default/files/' . $dir_path . '/' . $path_info['basename'];
     $new_dir = $stream . '/' . $dir_path;
     file_prepare_directory($new_dir, FILE_CREATE_DIRECTORY);
     $new_file = $new_dir . '/' . $path_info['basename'];
+    dpm(file_exists($source_file));
 
-    if (copy($source_file, $new_file) ) {
+/*     if (copy($source_file, $new_file) ) {
         // dpm( "Copy success!");
     }else{
         // dpm( "Copy no success!");
     }
+ */ 
   }
 }
 
