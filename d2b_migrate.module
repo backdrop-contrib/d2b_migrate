@@ -714,7 +714,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
     _update_process_info_list($projects, $system_list, 'module', TRUE);
   }
   elseif ($db_source['type'] == 'file') {
-    $projects = d2b_migrate_parse_sql($db_source['source']);
+    $projects = d2b_migrate_parse_sql_system_table($db_source['source']);
   }
 
   // After we fetch the project list, now we're going to use batch API to
@@ -865,7 +865,11 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
     db_set_active('migrateKey');
 
     $result = db_query('SELECT uri FROM {file_managed}')->fetchCol();
-    dpm($result);
+    $public_set = db_query('SELECT value FROM {variable} WHERE name = :file_public_path', [
+        ':file_public_path' => 'file_public_path',
+    ])->fetchField();
+
+    $file_public_path = $public_set ? unserialize($public_set) : 'sites/default/files';
 
     db_set_active();
   }
@@ -879,18 +883,18 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
     elseif (strpos($record, 'private://') === 0) {
       continue;
     }
-    $source_file = $source_base_path . 'sites/default/files/' . $dir_path . '/' . $path_info['basename'];
+    $source_file = $source_base_path . $file_public_path . '/' . $dir_path . '/' . $path_info['basename'];
     $new_dir = $stream . '/' . $dir_path;
     file_prepare_directory($new_dir, FILE_CREATE_DIRECTORY);
     $new_file = $new_dir . '/' . $path_info['basename'];
-    dpm(file_exists($source_file));
+    dpm($source_file);
 
-/*     if (copy($source_file, $new_file) ) {
+    if (copy($source_file, $new_file) ) {
         // dpm( "Copy success!");
     }else{
         // dpm( "Copy no success!");
     }
- */ 
+
   }
 }
 
@@ -1075,7 +1079,7 @@ function d2b_migrate_autoload_info() {
 }
 
 
-function d2b_migrate_parse_sql($sql_path) {
+function d2b_migrate_parse_sql_system_table($sql_path) {
   // $file = backdrop_get_path('module', 'tester') . '/d7.sql';
   $sqlLists = SqlParser::parse(file_get_contents($sql_path));
   $string = 'INSERT INTO `system`';
