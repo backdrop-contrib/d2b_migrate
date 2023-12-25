@@ -875,6 +875,10 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
 
     db_set_active();
   }
+  elseif ($data_source['type'] == 'file') {
+    $result = d2b_migrate_parse_sql_file_managed_table($data_source['source']);
+    $file_public_path = d2b_migrate_parse_sql_variable_table($data_source['source']);
+  }
 
   foreach ($result as $record) {
     $path_info = pathinfo($record);
@@ -1081,8 +1085,48 @@ function d2b_migrate_autoload_info() {
 }
 
 
+function d2b_migrate_parse_sql_variable_table($sql_path) {
+  $sqlLists = SqlParser::parse(file_get_contents($sql_path));
+  $string = 'INSERT INTO `variable`';
+  $file_public_path = 'sites/default/files';
+  foreach ($sqlLists as $sqlList) {
+    if (strpos($sqlList, $string) === 0) {
+      $parser = new PHPSQLParser\PHPSQLParser($sqlList);
+      $data = $parser->parsed['VALUES'];
+      foreach ($data as $line) {
+        if ($line['data'][0]['base_expr'] == "'file_public_path'") {
+          $file_public_path = hex2bin(ltrim($line['data'][0]['base_expr'], '0x'));
+          break;
+        }
+      }
+    }
+  }
+
+  return $file_public_path;
+}
+
+function d2b_migrate_parse_sql_file_managed_table($sql_path) {
+  $sqlLists = SqlParser::parse(file_get_contents($sql_path));
+  $string = 'INSERT INTO `file_managed`';
+  $files = array();
+  foreach ($sqlLists as $sqlList) {
+    if (strpos($sqlList, $string) === 0) {
+      $parser = new PHPSQLParser\PHPSQLParser($sqlList);
+      $data = $parser->parsed['VALUES'];
+      foreach ($data as $line) {
+        $uri = trim($line['data'][3]['base_expr'], "'");
+        if (strpos($uri, 'private://') === 0) {
+          continue;
+        }
+        $files[] = $uri;
+      }
+    }
+  }
+
+  return $files;
+}
+
 function d2b_migrate_parse_sql_system_table($sql_path) {
-  // $file = backdrop_get_path('module', 'tester') . '/d7.sql';
   $sqlLists = SqlParser::parse(file_get_contents($sql_path));
   $string = 'INSERT INTO `system`';
   $modules = array();
