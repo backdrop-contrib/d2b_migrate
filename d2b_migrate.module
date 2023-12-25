@@ -821,6 +821,7 @@ function d2b_migrate_files_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Source site URL'),
     '#default_value' => '',
+    '#required' => TRUE,
     '#description' => t('Enter the URL of the existing Drupal 7 site.')
   );
   $form['backup'] = array(
@@ -837,6 +838,7 @@ function d2b_migrate_files_form($form, &$form_state) {
     '#type' => 'submit',
     '#value' => t('Next: prepare for upgrade'),
     '#submit' => array('d2b_migrate_files_form_submit'),
+    '#limit_validation_errors' => array(),
   );
   return $form;
 }
