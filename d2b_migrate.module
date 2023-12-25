@@ -193,8 +193,10 @@ function d2b_migrate_get_active_database() {
   }
   elseif ($source_data['type'] == 'db') {
     backup_migrate_include('sources');
+    $database = $source_data['source'];
     $sources = backup_migrate_get_sources();
     $source = $sources[$database]->dest_url;
+    backdrop_set_message(t('Current source database: path %path with user %user.', array('%path' => $source['path'], '%user' => $source['user'])), 'info');
   }
   elseif ($source_data['type'] == 'file') {
     $path_parts = pathinfo($source_data['source']);
