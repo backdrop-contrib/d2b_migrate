@@ -872,10 +872,10 @@ function d2b_migrate_files_form($form, &$form_state) {
   return $form;
 }
 
-f/**
+/**
  * Submit handler for the "copy files" button on the download files form.
  */
-unction d2b_migrate_files_form_backup($form, &$form_state) {
+function d2b_migrate_files_form_backup($form, &$form_state) {
   $source_base_path = $form_state['values']['source_url'];
   $data_source = d2b_migrate_get_source();
 
