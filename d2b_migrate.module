@@ -245,6 +245,12 @@ function d2b_migrate_source_database_form($form, &$form_state) {
   );
 
   $form += backup_migrate_crud_ui_create('source', 'mysql');
+  $form['db_prefix'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Database prefix'),
+    '#description' => t('Enter the Drupal database table prefix (including any underscore), or leave blank if no prefix. If there are multiple prefixed tables in this database, all tables will be migrated, not only those with this prefix.'),
+    '#weight' => 80,
+  );
   $form['#validate'] = array('d2b_migrate_source_database_form_validate');
   $form['#submit'] = array('d2b_migrate_source_database_form_submit');
   return $form;
@@ -331,8 +337,11 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
       Database::addConnectionInfo('migrateKeys', 'default', $d7_database);
       db_set_active('migrateKeys');
 
-      // Query a table which does not exist in Backdrop.
-      $result = db_query('SELECT * FROM {role}');
+      // Query a table which does not exist in Backdrop. Use the DB prefix if
+      // provided.
+      $role = $form_state['values']['db_prefix'] . 'role';
+      $sql = "SELECT * FROM $role";
+      $result = db_query($sql);
       db_set_active();
     }
     catch (\PDOException $e) {
