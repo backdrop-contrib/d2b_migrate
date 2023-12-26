@@ -236,13 +236,6 @@ function d2b_migrate_start_form_submit($form, &$form_state) {
 
 function d2b_migrate_source_database_form($form, &$form_state) {
   backup_migrate_include('crud');
-  $form['upload'] = array(
-    '#type' => 'file',
-    '#title' => t('Choose a file'),
-    '#size' => 22,
-    '#theme_wrappers' => array(),
-    '#weight' => -10,
-  );
 
   $form += backup_migrate_crud_ui_create('source', 'mysql');
   $form['db_prefix'] = array(
@@ -253,6 +246,19 @@ function d2b_migrate_source_database_form($form, &$form_state) {
   );
   $form['#validate'] = array('d2b_migrate_source_database_form_validate');
   $form['#submit'] = array('d2b_migrate_source_database_form_submit');
+  $form['upload_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Or upload a backup file'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#description' => t("This <em>must</em> be a backup file created by Backup and Migrate module."),
+    '#weight' => 90,
+  );
+  $form['upload_wrapper']['upload'] = array(
+    '#type' => 'file',
+    '#title' => t('Choose a backup file'),
+    '#size' => 22,
+  );
   return $form;
 }
 
