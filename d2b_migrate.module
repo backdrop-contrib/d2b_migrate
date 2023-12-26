@@ -95,7 +95,7 @@ function d2b_migrate_theme($existing, $type, $theme, $path) {
 }
 
 /**
- * Add some variables for the projects install theme.
+ * Add some variables for the task list.
  *
  * @param $variables
  *   An associative array containing:
@@ -106,7 +106,7 @@ function template_preprocess_d2b_migrate_page(&$variables) {
 }
 
 /**
- * Get a task list to the sidebar area when installing projects.
+ * Get a task list to the sidebar area.
  *
  * This will need to be called from every page of the install process.
  *
@@ -132,13 +132,13 @@ function d2b_migrate_task_list($active = NULL) {
 }
 
 /**
- * Menu callback; page to install projects.
+ * Menu callback; the main D2B Migrate wizard.
  *
  * @param $op
  *   Operation to preform.
  *
  * @return string
- *   The rendered installation page.
+ *   The rendered wizard page.
  */
 function d2b_migrate_main_page($op) {
   backdrop_add_css(backdrop_get_path('module', 'd2b_migrate') . '/d2b_migrate.css', array('preprocess' => FALSE));
@@ -177,6 +177,9 @@ function d2b_migrate_main_page($op) {
   return theme('d2b_migrate_page', array('current_task' => $op, 'main_content' => backdrop_render($form)));
 }
 
+/**
+ * Implements hook_admin_paths().
+ */
 function d2b_migrate_admin_paths() {
   $paths = array(
     'd2b-migrate' => TRUE,
@@ -185,6 +188,9 @@ function d2b_migrate_admin_paths() {
   return $paths;
 }
 
+/**
+ * Returns the active source and sets a page message.
+ */
 function d2b_migrate_get_active_database() {
   $source = array();
   $source_data = d2b_migrate_get_source();
@@ -206,6 +212,10 @@ function d2b_migrate_get_active_database() {
   return $source_data;
 }
 
+
+/**
+ * Returns the start form.
+ */
 function d2b_migrate_start_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
 
@@ -227,13 +237,15 @@ function d2b_migrate_start_form($form, &$form_state) {
 }
 
 /**
- * Submit the item edit form.
+ * Submit handler for the start form.
  */
 function d2b_migrate_start_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate/source';
 }
 
-
+/**
+ * Returns the source database form.
+ */
 function d2b_migrate_source_database_form($form, &$form_state) {
   backup_migrate_include('crud');
 
@@ -262,8 +274,12 @@ function d2b_migrate_source_database_form($form, &$form_state) {
   return $form;
 }
 
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
 function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_state, $form_id) {
   // todo: add a disconect button.
+  // todo: prevent this from altering except for D2B Migrate.
   $value = uniqid();
 
   $source = d2b_migrate_get_active_database();
@@ -287,7 +303,7 @@ function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_sta
 }
 
 /**
- * Submit the item edit form.
+ * Validate handler for the source database form.
  */
 function d2b_migrate_source_database_form_validate($form, &$form_state) {
   $destination = 'private://backup_migrate/manual';
@@ -307,7 +323,6 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
       form_set_error('upload', t('The logo could not be uploaded.'));
     }
 
-    // $settings = _backup_migrate_profile_saved_default_profile();
     $filename = $destination . '/' . $file->filename . '.info';
     $info_file = array(
       'filename' => $filename,
@@ -358,17 +373,7 @@ function d2b_migrate_source_database_form_validate($form, &$form_state) {
 }
 
 /**
- * Unpacks a downloaded archive file.
- *
- * @param string $file
- *   The filename of the archive you wish to extract.
- * @param string $directory
- *   The directory you wish to extract the archive into.
- *
- * @return ArchiverInterface
- *   The Archiver object used to extract the archive.
- *
- * @throws Exception
+ * Unpacks an uploaded backup file and moves it to the manual destination.
  */
 function d2b_migrate_archive_extract($file, $directory) {
   backup_migrate_include('sources');
@@ -383,20 +388,17 @@ function d2b_migrate_archive_extract($file, $directory) {
     throw new Exception(t('Cannot extract %file, not a valid archive.', array('%file' => $file)));
   }
 
-      $out = new backup_file(array('filepath' => $file));
+  $out = new backup_file(array('filepath' => $file));
   $new_file = $archiver->_backup_migrate_file_decompress($out, $settings);
-  dpm($new_file);
-    $ext = implode('.', $new_file->ext);
-    $name = $new_file->name . '.' . $ext;
-  dpm($name);
+  $ext = implode('.', $new_file->ext);
+  $name = $new_file->name . '.' . $ext;
   $return = file_unmanaged_copy($new_file->path, $directory . '/' . $name, FILE_EXISTS_RENAME);
-
 
   return $return;
 }
 
 /**
- * Submit the item edit form.
+ * Submit handler for the source database form.
  */
 function d2b_migrate_source_database_form_submit($form, &$form_state) {
   if (isset($form_state['file'])) {
@@ -419,6 +421,9 @@ function d2b_migrate_source_database_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate/analysis';
 }
 
+/**
+ * Returns the database analysis form.
+ */
 function d2b_migrate_analysis_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
   if (empty($source)) {
@@ -529,7 +534,8 @@ function d2b_migrate_analysis_form($form, &$form_state) {
 }
 
 /**
- * Submit the item edit form.
+ * Handler for the "download available projects" button on the database
+ * analysis form.
  */
 function d2b_migrate_analysis_download_projects($form, &$form_state) {
   module_load_include('inc', 'installer', 'installer.browser');
@@ -551,7 +557,7 @@ function d2b_migrate_analysis_download_projects($form, &$form_state) {
 }
 
 /**
- * Submit the item edit form.
+ * Batch API utility.
  */
 function d2b_migrate_analysis_batch_download($projects) {
   foreach ($projects as $project) {
@@ -582,7 +588,6 @@ function d2b_migrate_analysis_batch_download($projects) {
   module_load_include('inc', 'installer', 'installer.browser');
   // Store maintenance_mode setting so we can restore it when done.
   $_SESSION['maintenance_mode'] = state_get('maintenance_mode', FALSE);
-    //state_set('maintenance_mode', TRUE);
 
   foreach ($releases as $item) {
     // Load the selected release.
@@ -611,7 +616,6 @@ function d2b_migrate_analysis_batch_download($projects) {
   );
   batch_set($batch);
 }
-
 
 /**
  * Batch API callback: shows a message and finishes up the batch.
@@ -658,14 +662,14 @@ function _d2b_migrate_analysis_batch_download_finished($success, $results, $oper
 }
 
 /**
- * Submit the item edit form.
+ * Submit handler for the database analysis form.
  */
 function d2b_migrate_analysis_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate/files';
 }
 
 /**
- * Submit the item edit form.
+ * Handler for the "Update project data" button of the database analysis form.
  */
 function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   _update_cache_clear('d2b_migrate_get_cached_projects');
@@ -777,6 +781,10 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
   }
 }
 
+/**
+ * Batch API handler for the database analysis form. Fetches data about
+ * available projects.
+ */
 function d2b_migrate_analysis_fetch_project($project, &$context) {
   $project_name = $project['name'];
   if (!empty($project['in_core_since'])) {
@@ -805,6 +813,9 @@ function d2b_migrate_analysis_fetch_project($project, &$context) {
   $context['message'] = t('Processing project "@title"', array('@title' => $project['info']['name']));
 }
 
+/**
+ * Batch API callback: shows a message and finishes up the batch.
+ */
 function d2b_migrate_analysis_fetch_project_finished($success, $results, $operations) {
   if ($success) {
     $cached_data = _update_cache_get('d2b_migrate_get_cached_projects');
@@ -826,6 +837,9 @@ function d2b_migrate_analysis_fetch_project_finished($success, $results, $operat
   }
 }
 
+/**
+ * Returns the download files form.
+ */
 function d2b_migrate_files_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
   $form['help'] = array(
@@ -858,8 +872,10 @@ function d2b_migrate_files_form($form, &$form_state) {
   return $form;
 }
 
-
-function d2b_migrate_files_form_backup($form, &$form_state) {
+f/**
+ * Submit handler for the "copy files" button on the download files form.
+ */
+unction d2b_migrate_files_form_backup($form, &$form_state) {
   $source_base_path = $form_state['values']['source_url'];
   $data_source = d2b_migrate_get_source();
 
@@ -908,7 +924,6 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
     $new_dir = $stream . '/' . $dir_path;
     file_prepare_directory($new_dir, FILE_CREATE_DIRECTORY);
     $new_file = $new_dir . '/' . $path_info['basename'];
-    dpm($source_file);
 
     if (copy($source_file, $new_file) ) {
         // dpm( "Copy success!");
@@ -919,13 +934,16 @@ function d2b_migrate_files_form_backup($form, &$form_state) {
   }
 }
 
+/**
+ * Submit handler for the download files form.
+ */
 function d2b_migrate_files_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'd2b-migrate/restore';
 }
 
 
 /**
- * The restore/import upload form.
+ * Returns the restore form.
  */
 function d2b_migrate_restore_form($form, &$form_state) {
   $source = d2b_migrate_get_active_database();
@@ -950,7 +968,7 @@ function d2b_migrate_restore_form($form, &$form_state) {
 }
 
 /**
- * The restore/import upload form.
+ * Submit handler for the restore form.
  */
 function d2b_migrate_restore_form_submit($form, &$form_state) {
   backup_migrate_include('sources');
@@ -958,6 +976,9 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
   backup_migrate_include('profiles');
 
   $source = d2b_migrate_get_source();
+
+  // Create a backup file. Either we use Backup and Migrates backup functions to
+  // create one from a connected database, or prepare an uploaded backup file.
   if ($source['type'] == 'db') {
     // Backup file
     $destinations = backup_migrate_get_destinations();
@@ -975,15 +996,13 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
     $file = new backup_file(array('filepath' => $source['source']));
   }
 
-
-  // Restore.
+  // Now we restore from the backup file.
   $values = array();
   $values['source_id'] = 'db';
   $values['from'] = 'saved';
 
   d2b_migrate_perform_restore('manual', $file, $values);
 }
-
 
 /**
  * Restore from a file in the given destination.
@@ -1051,14 +1070,14 @@ function d2b_migrate_shutdown($settings) {
   // The session will have already been written and closed, so we need to write any changes directly.
   _backdrop_session_write(session_id(), session_encode());
 
-  // backdrop_goto() calls t() at some point, on whats now still essentially a D7 database,
-  // which is missing a locale column and causes an exception. So we fake it.
+  // backdrop_goto() calls t() at some point, on whats now still essentially a
+  // D7 database, which is therefore  missing a locale column and thus causes
+  // an exception. So we fake backdrop_goto().
   d2b_migrate_goto();
 }
 
-
 /**
- * Shutdown callback when the script terminates even if the script timed out.
+ * Copy of backdrop_goto() that doesn't crash.
  */
 function d2b_migrate_goto() {
   $url = base_path() . 'core/update.php';
@@ -1099,7 +1118,9 @@ function d2b_migrate_autoload_info() {
   );
 }
 
-
+/**
+ * Parses an uploaded sql file to get the saved file public path.
+ */
 function d2b_migrate_parse_sql_variable_table($sql_path) {
   $sqlLists = SqlParser::parse(file_get_contents($sql_path));
   $string = 'INSERT INTO `variable`';
@@ -1120,6 +1141,9 @@ function d2b_migrate_parse_sql_variable_table($sql_path) {
   return $file_public_path;
 }
 
+/**
+ * Parses an uploaded sql file to get all managed file paths.
+ */
 function d2b_migrate_parse_sql_file_managed_table($sql_path) {
   $sqlLists = SqlParser::parse(file_get_contents($sql_path));
   $string = 'INSERT INTO `file_managed`';
@@ -1141,6 +1165,9 @@ function d2b_migrate_parse_sql_file_managed_table($sql_path) {
   return $files;
 }
 
+/**
+ * Parses an uploaded sql file to get the all site modules.
+ */
 function d2b_migrate_parse_sql_system_table($sql_path) {
   $sqlLists = SqlParser::parse(file_get_contents($sql_path));
   $string = 'INSERT INTO `system`';
@@ -1193,11 +1220,16 @@ function d2b_migrate_parse_sql_system_table($sql_path) {
   $projects = array();
   d2b_migrate_process_info_list($projects, $modules, 'module', TRUE);
 
-dpm($projects);
   return $projects;
 }
 
+/**
+ * Copy of _update_process_info_list().
+ */
 function d2b_migrate_process_info_list(&$projects, $list, $project_type, $status) {
+  // todo: most of this code is verbatim and highly unnecessary. This function
+  // is just needed to group modules by the "project" key in their info files.
+
   foreach ($list as $name_key => $file) {
     // Skip if the .info file is broken.
     if (empty($file->info)) {
@@ -1221,13 +1253,6 @@ function d2b_migrate_process_info_list(&$projects, $list, $project_type, $status
       $project_name = $file->info['project'];
     }
 
-    // If we don't already know it, grab the change time on the .info file
-    // itself. Note: we need to use the ctime, not the mtime (modification
-    // time) since many (all?) tar implementations will go out of their way to
-    // set the mtime on the files it creates to the timestamps recorded in the
-    // tarball. We want to see the last time the file was changed on disk,
-    // which is left alone by tar and correctly set to the time the .info file
-    // was unpacked.
     if (!isset($file->info['_info_file_ctime'])) {
       $file->info['_info_file_ctime'] = 1525159574;
     }
@@ -1291,6 +1316,9 @@ function d2b_migrate_process_info_list(&$projects, $list, $project_type, $status
   }
 }
 
+/**
+ * Sets the database data source.
+ */
 function d2b_migrate_set_source($source, $type) {
   state_set('d2b_migrate_source', 
     array(
@@ -1300,6 +1328,9 @@ function d2b_migrate_set_source($source, $type) {
   );
 }
 
+/**
+ * Gets the database data source.
+ */
 function d2b_migrate_get_source() {
   return state_get('d2b_migrate_source', array());
 }
