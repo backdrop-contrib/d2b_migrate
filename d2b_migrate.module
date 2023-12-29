@@ -730,8 +730,7 @@ function d2b_migrate_analysis_fetch_projects($form, &$form_state) {
       $system_list[$record->name] = $record;
     }
     module_load_include('inc', 'update', 'update.compare');
-    _update_process_info_list($projects, $system_list, 'module', FALSE);
-    _update_process_info_list($projects, $system_list, 'module', TRUE);
+    d2b_migrate_process_info_list($projects, $system_list, 'module', TRUE);
   }
   elseif ($db_source['type'] == 'file') {
     $projects = d2b_migrate_parse_sql_system_table($db_source['source']);
