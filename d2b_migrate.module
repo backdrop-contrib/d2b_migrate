@@ -992,13 +992,16 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
 
     $settings->destination_id = array('manual');
 
-    $database = state_get('d2b_migrate_source_db_name', '');
+    $database = $source['source'];
     $settings->source_id = $database;
 
-    $file = backup_migrate_perform_backup($settings);
+    $backup_file = backup_migrate_perform_backup($settings);
+    $latest_file = backup_migrate_destination_get_latest_file('manual');
+    $file = $latest_file->file_info['file_id'];
   }
   elseif ($source['type'] == 'file') {
-    $file = new backup_file(array('filepath' => $source['source']));
+    $path_parts = pathinfo($source['source']);
+    $file = $path_parts['basename'];
   }
 
   // Now we restore from the backup file.
