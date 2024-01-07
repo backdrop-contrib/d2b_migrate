@@ -201,13 +201,23 @@ function d2b_migrate_get_active_database() {
     backup_migrate_include('sources');
     $database = $source_data['source'];
     $sources = backup_migrate_get_sources();
-    $source = $sources[$database]->dest_url;
-    backdrop_set_message(t('Current source database: path %path with user %user.', array('%path' => $source['path'], '%user' => $source['user'])), 'info');
+    if (isset($sources[$database])) {
+      $source = $sources[$database]->dest_url;
+      backdrop_set_message(t('Current source database: path %path with user %user.', array('%path' => $source['path'], '%user' => $source['user'])), 'info');
+    }
+    else {
+      backdrop_set_message(t('The saved database source is invalid. Please re-submit the Source form.'), 'info');
+    }
   }
   elseif ($source_data['type'] == 'file') {
-    $path_parts = pathinfo($source_data['source']);
-    $file = $path_parts['basename'];
-    backdrop_set_message(t('Current source database: file %file.', array('%file' => $file)), 'info');
+    if (file_exists($source_data['source'])) {
+      $path_parts = pathinfo($source_data['source']);
+      $file = $path_parts['basename'];
+      backdrop_set_message(t('Current source database: file %file.', array('%file' => $file)), 'info');
+    }
+    else {
+      backdrop_set_message(t('The saved file source is invalid. Please re-submit the Source form.'), 'info');
+    }
   }
   return $source_data;
 }
@@ -217,7 +227,6 @@ function d2b_migrate_get_active_database() {
  * Returns the start form.
  */
 function d2b_migrate_start_form($form, &$form_state) {
-  state_set('d2b_migrate_source', array());
   $source = d2b_migrate_get_active_database();
 
   $private_files = config_get('system.core','file_private_path');
@@ -1077,7 +1086,7 @@ function d2b_migrate_perform_restore($destination_id, $file, $settings = array()
     'filename' => 'modules/d2b_migrate/d2b_migrate_post_install/d2b_migrate_post_install.module',
     'name' => 'd2b_migrate_post_install',
     'type' => 'module',
-    'status' => 1,
+    'status' => 0,
     'schema_version' => 0,
     'owner' => '',
     'info' => serialize($info),
