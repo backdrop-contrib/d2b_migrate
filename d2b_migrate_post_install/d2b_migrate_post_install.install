@@ -2,10 +2,9 @@
 
 
 /**
- * Set state then disable the module.
+ * Set database_utf8mb4_active state then disable the module.
  */
 function d2b_migrate_post_install_update_1000() {
-  watchdog('backup_migrate', 'Cron disabled oh2.');
   state_set('database_utf8mb4_active', FALSE);
   module_disable(array('d2b_migrate_post_install'));
   backdrop_uninstall_modules(array('d2b_migrate_post_install'));
