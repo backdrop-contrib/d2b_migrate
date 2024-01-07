@@ -217,6 +217,7 @@ function d2b_migrate_get_active_database() {
  * Returns the start form.
  */
 function d2b_migrate_start_form($form, &$form_state) {
+  state_set('d2b_migrate_source', array());
   $source = d2b_migrate_get_active_database();
 
   $private_files = config_get('system.core','file_private_path');
@@ -283,7 +284,7 @@ function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_sta
   $value = uniqid();
 
   $source = d2b_migrate_get_active_database();
-  if ($source['type'] == 'db') {
+  if (isset($source['type']) && $source['type'] == 'db') {
     $form['host']['#default_value'] = $source['host'];
     $form['user']['#default_value'] = $source['user'];
     $form['path']['#default_value'] = $source['path'];
