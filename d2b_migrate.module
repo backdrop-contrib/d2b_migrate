@@ -1056,6 +1056,33 @@ function d2b_migrate_perform_restore($destination_id, $file, $settings = array()
     return FALSE;
   }
 
+  $module = 'd2b_migrate_post_install';
+  $query = db_insert('system')->fields(array('filename', 'name', 'type', 'status', 'owner', 'schema_version', 'info'));
+  $info = array (
+    'name' => 'Drupal to Backdrop Migrate (D2B) Post-install',
+    'description' => 'Runs cleanup code after D2B Migrate is finished.',
+    'backdrop' => '1.x',
+    'type' => 'module',
+    'hidden' => true,
+    'mtime' => 1704575896,
+    'dependencies' => array (),
+    'package' => 'Other',
+    'version' => '1.x-dev',
+    'php' => '5.6.0',
+    'files' => array (),
+    'bootstrap' => 0,
+  );
+  $query->values(array(
+    'filename' => 'modules/d2b_migrate/d2b_migrate_post_install/d2b_migrate_post_install.module',
+    'name' => 'd2b_migrate_post_install',
+    'type' => 'module',
+    'status' => 1,
+    'schema_version' => 0,
+    'owner' => '',
+    'info' => serialize($info),
+  ));
+  $query->execute();
+
   $time = timer_stop('backup_migrate_restore');
 
   // Delete any temp files we've created.
