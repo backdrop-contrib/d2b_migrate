@@ -1,5 +1,0 @@
-name = Drupal to Backdrop Migrate (D2B) Post-install
-description = Runs cleanup code after D2B Migrate is finished.
-backdrop = 1.x
-type = module
-hidden = true

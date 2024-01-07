@@ -206,7 +206,7 @@ function d2b_migrate_get_active_database() {
       backdrop_set_message(t('Current source database: path %path with user %user.', array('%path' => $source['path'], '%user' => $source['user'])), 'info');
     }
     else {
-      backdrop_set_message(t('The saved database source is invalid. Please re-submit the Source form.'), 'info');
+      backdrop_set_message(t('The saved database source is invalid. Please re-submit the Source form.'), 'warning');
     }
   }
   elseif ($source_data['type'] == 'file') {
@@ -216,7 +216,7 @@ function d2b_migrate_get_active_database() {
       backdrop_set_message(t('Current source database: file %file.', array('%file' => $file)), 'info');
     }
     else {
-      backdrop_set_message(t('The saved file source is invalid. Please re-submit the Source form.'), 'info');
+      backdrop_set_message(t('The saved file source is invalid. Please re-submit the Source form.'), 'warning');
     }
   }
   return $source_data;
@@ -292,13 +292,20 @@ function d2b_migrate_form_backup_migrate_crud_edit_form_alter(&$form, &$form_sta
   // todo: prevent this from altering except for D2B Migrate.
   $value = uniqid();
 
-  $source = d2b_migrate_get_active_database();
-  if (isset($source['type']) && $source['type'] == 'db') {
-    $form['host']['#default_value'] = $source['host'];
-    $form['user']['#default_value'] = $source['user'];
-    $form['path']['#default_value'] = $source['path'];
-    $form['pass']['#default_value'] = $source['pass'];
-    $form['port']['#default_value'] = $source['port'];
+  $source_data = d2b_migrate_get_active_database();
+  if (isset($source_data['type']) && $source_data['type'] == 'db') {
+    backup_migrate_include('sources');
+    $database = $source_data['source'];
+    $sources = backup_migrate_get_sources();
+    if (isset($sources[$database])) {
+      $source = $sources[$database]->dest_url;
+
+      $form['host']['#default_value'] = $source['host'];
+      $form['user']['#default_value'] = $source['user'];
+      $form['path']['#default_value'] = $source['path'];
+      $form['pass']['#default_value'] = $source['pass'];
+      $form['port']['#default_value'] = isset($source['port']) ? $source['port'] : '';
+    }
   }
 
   $form['help'] = array(
@@ -1066,32 +1073,7 @@ function d2b_migrate_perform_restore($destination_id, $file, $settings = array()
     return FALSE;
   }
 
-  $module = 'd2b_migrate_post_install';
-  $query = db_insert('system')->fields(array('filename', 'name', 'type', 'status', 'owner', 'schema_version', 'info'));
-  $info = array (
-    'name' => 'Drupal to Backdrop Migrate (D2B) Post-install',
-    'description' => 'Runs cleanup code after D2B Migrate is finished.',
-    'backdrop' => '1.x',
-    'type' => 'module',
-    'hidden' => true,
-    'mtime' => 1704575896,
-    'dependencies' => array (),
-    'package' => 'Other',
-    'version' => '1.x-dev',
-    'php' => '5.6.0',
-    'files' => array (),
-    'bootstrap' => 0,
-  );
-  $query->values(array(
-    'filename' => 'modules/d2b_migrate/d2b_migrate_post_install/d2b_migrate_post_install.module',
-    'name' => 'd2b_migrate_post_install',
-    'type' => 'module',
-    'status' => 0,
-    'schema_version' => 0,
-    'owner' => '',
-    'info' => serialize($info),
-  ));
-  $query->execute();
+  state_set('database_utf8mb4_active', FALSE);
 
   $time = timer_stop('backup_migrate_restore');
 
