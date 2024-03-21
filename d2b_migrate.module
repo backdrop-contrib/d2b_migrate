@@ -1021,6 +1021,22 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
     $file = $path_parts['basename'];
   }
 
+  // Duplicate the admin role and delete it.
+  $old_admin_role = user_role_load('administrator');
+  $old_admin_role->name = 'old_administrator';
+  $old_admin_role->label = 'Old dministrator role';
+  $old_admin_role->description = 'Duplicate of the pre-existing admin role before upgrade.';
+  user_role_save($old_admin_role);
+  // If the current user is an admin, make sure he gets back all the admin
+  // permissions.
+  if (user_has_role('administrator')) {
+    global $user;
+    $current_user = user_load($user->uid);
+    $current_user->roles[] = $old_admin_role->name;
+    user_save($current_user);
+  }
+  config('user.role.administrator')->delete();
+
   // Now we restore from the backup file.
   $values = array();
   $values['source_id'] = 'db';
