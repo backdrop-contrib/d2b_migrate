@@ -1090,6 +1090,7 @@ function d2b_migrate_perform_restore($destination_id, $file, $settings = array()
   }
 
   state_set('database_utf8mb4_active', FALSE);
+  d2b_migrate_variable_set('admin_theme', config_get('system.core', 'admin_theme'));
 
   $time = timer_stop('backup_migrate_restore');
 
@@ -1127,6 +1128,20 @@ function d2b_migrate_goto() {
 
   header('Location: ' . $url, TRUE, 302);
   backdrop_exit($url);
+}
+
+/**
+ * Directly set values into the variable table.
+ */
+function d2b_migrate_variable_set($name, $value) {
+  db_merge('variable')
+    ->key(array(
+      'name' => $name,
+    ))
+    ->fields(array(
+      'value' => serialize($value),
+    ))
+    ->execute();
 }
 
 /**
