@@ -1022,20 +1022,21 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
   }
 
   // Duplicate the admin role and delete it.
-  $old_admin_role = user_role_load('administrator');
-  $old_admin_role->name = 'old_administrator';
-  $old_admin_role->label = 'Old dministrator role';
-  $old_admin_role->description = 'Duplicate of the pre-existing admin role before upgrade.';
-  user_role_save($old_admin_role);
-  // If the current user is an admin, make sure he gets back all the admin
-  // permissions.
-  if (user_has_role('administrator')) {
-    global $user;
-    $current_user = user_load($user->uid);
-    $current_user->roles[] = $old_admin_role->name;
-    user_save($current_user);
+  if ($old_admin_role = user_role_load('administrator')) {
+    $old_admin_role->name = 'old_administrator';
+    $old_admin_role->label = 'Old dministrator role';
+    $old_admin_role->description = 'Duplicate of the pre-existing admin role before upgrade.';
+    user_role_save($old_admin_role);
+    // If the current user is an admin, make sure he gets back all the admin
+    // permissions.
+    if (user_has_role('administrator')) {
+      global $user;
+      $current_user = user_load($user->uid);
+      $current_user->roles[] = $old_admin_role->name;
+      user_save($current_user);
+    }
+    config('user.role.administrator')->delete();
   }
-  config('user.role.administrator')->delete();
 
   // Now we restore from the backup file.
   $values = array();
@@ -1043,6 +1044,7 @@ function d2b_migrate_restore_form_submit($form, &$form_state) {
   $values['from'] = 'saved';
 
   d2b_migrate_perform_restore('manual', $file, $values);
+  $form_state['redirect'] = '/';
 }
 
 /**
@@ -1096,6 +1098,26 @@ function d2b_migrate_perform_restore($destination_id, $file, $settings = array()
 
   // Delete any temp files we've created.
   backup_migrate_cleanup();
+
+  // If there were any module databases installed before the migrate runs, from 
+  // modules that are not installed in the D7 source, then these will be listed
+  // in System as status "-1", meaning never installed. So if a user tries to
+  // install those modules in the future, Backdrop will try to install their
+  // tables again, leading to an error that the tables are already installed.
+  // So we delete these database tables here.
+  // A notable example is Backup and migrate itself.
+  $files = backdrop_system_listing('/^' . BACKDROP_PHP_FUNCTION_PATTERN . '\.module$/', 'modules', 'uri', 0);
+  $result = db_query("SELECT filename, name, type, status, schema_version, weight FROM {system} WHERE type = :type", array(':type' => 'module'))->fetchAllAssoc('name');
+
+  foreach($files as $file) {
+    if (strpos($file->uri, 'modules/') === 0 && !isset($result[$file->name])) {
+      $schema = backdrop_get_schema_unprocessed($file->name);
+      foreach ($schema as $module => $info) {
+        db_drop_table($module);
+        watchdog('d2b_migrate', 'Database table :table deleted', array(':table' => $module));
+      }
+    }
+  }
 
   // No errors. Return the file.
   return $file;
